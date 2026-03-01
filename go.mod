@@ -8,12 +8,12 @@ require (
 	github.com/asaskevich/EventBus v0.0.0-20200907212545-49d423059eef
 	github.com/dcarbone/zadapters/zstdlog v1.1.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-chi/chi/v5 v5.2.4
+	github.com/go-chi/chi/v5 v5.2.5
 	github.com/go-chi/render v1.0.3
 	github.com/gorilla/sessions v1.4.0
 	github.com/knadh/koanf v1.5.0
 	github.com/knadh/koanf/v2 v2.3.2
-	github.com/lib/pq v1.11.1
+	github.com/lib/pq v1.11.2
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nstratos/go-myanimelist v0.9.5
 	github.com/pkg/errors v0.9.1
@@ -24,11 +24,11 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	golang.org/x/oauth2 v0.34.0
+	golang.org/x/oauth2 v0.35.0
 	golang.org/x/sync v0.19.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 	gopkg.in/yaml.v3 v3.0.1
-	modernc.org/sqlite v1.44.3
+	modernc.org/sqlite v1.46.1
 )
 
 require (
