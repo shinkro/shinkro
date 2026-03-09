@@ -14,8 +14,8 @@ import (
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 	"gopkg.in/yaml.v3"
 
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/pkg/sharedhttp"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/pkg/sharedhttp"
 )
 
 type Service interface {

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-chi/chi/v5"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 	"net/http"
 	"path/filepath"
 )

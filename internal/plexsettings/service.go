@@ -10,8 +10,8 @@ import (
 
 	"github.com/dcarbone/zadapters/zstdlog"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/pkg/plex"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/pkg/plex"
 )
 
 type Service interface {

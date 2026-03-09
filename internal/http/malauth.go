@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 	"golang.org/x/oauth2"
 	"net/http"
 )

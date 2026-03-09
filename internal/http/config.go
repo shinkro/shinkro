@@ -8,8 +8,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
-	"github.com/varoOP/shinkro/internal/config"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/config"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 type configJson struct {

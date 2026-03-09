@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/varoOP/shinkro/pkg/sharedhttp"
+	"github.com/shinkro/shinkro/pkg/sharedhttp"
 )
 
 // LatestTag returns the latest GitHub release tag for shinkro
 func LatestTag(ctx context.Context) (string, error) {
 	client := &http.Client{Timeout: 10 * time.Second, Transport: sharedhttp.Transport}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/varoOP/shinkro/releases/latest", nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://api.github.com/repos/shinkro/shinkro/releases/latest", nil)
 	if err != nil {
 		return "", err
 	}

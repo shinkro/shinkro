@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/rs/zerolog/hlog"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 type plexService interface {

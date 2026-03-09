@@ -13,10 +13,10 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/hlog"
 
-	"github.com/varoOP/shinkro/internal/config"
-	"github.com/varoOP/shinkro/internal/database"
-	"github.com/varoOP/shinkro/pkg/sse"
-	"github.com/varoOP/shinkro/web"
+	"github.com/shinkro/shinkro/internal/config"
+	"github.com/shinkro/shinkro/internal/database"
+	"github.com/shinkro/shinkro/pkg/sse"
+	"github.com/shinkro/shinkro/web"
 )
 
 type Server struct {

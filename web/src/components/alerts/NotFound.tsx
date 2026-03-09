@@ -22,7 +22,7 @@ export const NotFound = () => {
                             </Text>
                             <Text size="md" c="dimmed" ta="center">
                                 send a raven to our{" "}
-                                <ExternalLink href="https://github.com/varoOP/shinkro">
+                                <ExternalLink href="https://github.com/shinkro/shinkro">
                                     GitHub guild
                                 </ExternalLink>{" "}
                                 or rally at{" "}

@@ -65,7 +65,7 @@ changelog:
 release:
   prerelease: auto
   footer: |
-    **Full Changelog**: https://github.com/varoOP/shinkro/compare/{{ .PreviousTag }}...{{ .Tag }}
+    **Full Changelog**: https://github.com/shinkro/shinkro/compare/{{ .PreviousTag }}...{{ .Tag }}
 
     ## Docker images
     

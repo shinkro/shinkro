@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/varoOP/shinkro/pkg/sharedhttp"
+	"github.com/shinkro/shinkro/pkg/sharedhttp"
 )
 
 type Config struct {

@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/pkgerrors"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/pkg/sse"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/pkg/sse"
 	"gopkg.in/natefinch/lumberjack.v2"
 )
 

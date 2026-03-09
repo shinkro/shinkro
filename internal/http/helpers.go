@@ -12,7 +12,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/rs/zerolog/hlog"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 const InternalServerError string = "internal server error"

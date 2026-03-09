@@ -13,14 +13,14 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/varoOP/shinkro/internal/api"
-	"github.com/varoOP/shinkro/internal/auth"
-	"github.com/varoOP/shinkro/internal/config"
-	"github.com/varoOP/shinkro/internal/database"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/testdata"
-	"github.com/varoOP/shinkro/internal/user"
-	"github.com/varoOP/shinkro/pkg/sse"
+	"github.com/shinkro/shinkro/internal/api"
+	"github.com/shinkro/shinkro/internal/auth"
+	"github.com/shinkro/shinkro/internal/config"
+	"github.com/shinkro/shinkro/internal/database"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/testdata"
+	"github.com/shinkro/shinkro/internal/user"
+	"github.com/shinkro/shinkro/pkg/sse"
 )
 
 // setupTestHTTPServer creates a test HTTP server with all services wired up

@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/testdata"
-	"github.com/varoOP/shinkro/pkg/plex"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/testdata"
+	"github.com/shinkro/shinkro/pkg/plex"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"
