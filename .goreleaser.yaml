@@ -69,7 +69,7 @@ release:
 
     ## Docker images
     
-    - `docker pull ghcr.io/varoOP/shinkro:{{ .Tag }}`
+    - `docker pull ghcr.io/shinkro/shinkro:{{ .Tag }}`
     
     ## What to do next?
     
