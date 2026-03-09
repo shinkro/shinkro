@@ -203,18 +203,22 @@ jobs:
           name: web-dist
           path: web/dist
 
+      # A varoOP PAT with write:packages scope is required to push to both
+      # ghcr.io/shinkro/shinkro and the legacy ghcr.io/varoop/shinkro namespace.
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
           registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: varoOP
+          password: ${{ secrets.VAROOP_PAT }}
 
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/shinkro/shinkro
+          images: |
+            ghcr.io/shinkro/shinkro
+            ghcr.io/varoop/shinkro
           tags: |
             type=semver,pattern={{raw}}
             type=ref,event=branch
