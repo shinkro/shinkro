@@ -71,7 +71,7 @@ export const MapSettings = () => {
             <SettingsSectionHeader
                 title="Mapping"
                 description="Set up custom mapping for anime matching here."
-                link={"https://github.com/varoOP/shinkro-mapping"}
+                link={"https://github.com/shinkro/community-mapping"}
                 note={
                     <Stack>
                         <Text fw={600} size={"sm"}>

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/rs/zerolog"
 
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 type Service interface {

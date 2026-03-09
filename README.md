@@ -5,7 +5,7 @@
 
 <p align="center">An application to sync Plex watch status to myanimelist.</p>
 
-<p align="center"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/varoOP/shinkro?style=for-the-badge">&nbsp;<img alt="GitHub all releases" src="https://img.shields.io/github/downloads/varoOP/shinkro/total?style=for-the-badge">&nbsp;<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/varoOP/shinkro/release.yml?style=for-the-badge"></p>
+<p align="center"><img alt="GitHub release (latest by date)" src="https://img.shields.io/github/v/release/shinkro/shinkro?style=for-the-badge">&nbsp;<img alt="GitHub all releases" src="https://img.shields.io/github/downloads/shinkro/shinkro/total?style=for-the-badge">&nbsp;<img alt="GitHub Workflow Status" src="https://img.shields.io/github/actions/workflow/status/shinkro/shinkro/release.yml?style=for-the-badge"></p>
 
 ## Documentation
 
@@ -45,16 +45,16 @@ docker run \
     -e TZ=US/Pacific \
     -p 7011:7011 \
     --restart unless-stopped \
-    ghcr.io/varoop/shinkro:latest
+    ghcr.io/shinkro/shinkro:latest
 ```
 
 ## Custom Mapping
 
-While shinkro maps most malids to tvdbids in it's database it only works well for season 1 of anime. Multiseason anime mapping is too complicated to automate at this point in time. For malid to tmdbids, a lot of movies are properly mapped in shinkro's database but not all of them. The ones which aren't are listed in [shinkro-mapping](https://github.com/varoOP/shinkro-mapping) ready for manual mapping.
+While shinkro maps most malids to tvdbids in it's database it only works well for season 1 of anime. Multiseason anime mapping is too complicated to automate at this point in time. For malid to tmdbids, a lot of movies are properly mapped in shinkro's database but not all of them. The ones which aren't are listed in [community-mapping](https://github.com/shinkro/community-mapping) ready for manual mapping.
 
-By default, shinkro will use the community mapping hosted in the [shinkro-mapping](https://github.com/varoOP/shinkro-mapping) repository. It is encouraged for the user base to use the community mapping - if it does not contain a mapping you need, consider contributing or creating an issue. 
+By default, shinkro will use the community mapping hosted in the [community-mapping](https://github.com/shinkro/community-mapping) repository. It is encouraged for the user base to use the community mapping - if it does not contain a mapping you need, consider contributing or creating an issue. 
 
-Of course, you do have the option to specify your own custom maps. Simply place `tvdb-mal.yaml` for MAL-TVDB mappings or `tmdb-mal.yaml` for MAL-TMDB mappings in shinkro's configuration directory (where config.toml and shinkro.db files are located). shinkro will automatically detect the change and start using your custom mapping(s). The structure of both yaml files can be viewed at the [shinkro-mapping](https://github.com/varoOP/shinkro-mapping) repository.
+Of course, you do have the option to specify your own custom maps. Simply place `tvdb-mal.yaml` for MAL-TVDB mappings or `tmdb-mal.yaml` for MAL-TMDB mappings in shinkro's configuration directory (where config.toml and shinkro.db files are located). shinkro will automatically detect the change and start using your custom mapping(s). The structure of both yaml files can be viewed at the [community-mapping](https://github.com/shinkro/community-mapping) repository.
 
 ## Community
 

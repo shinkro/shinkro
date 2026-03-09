@@ -6,7 +6,7 @@ import (
 	"html"
 	"strings"
 
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 type MessageBuilder interface {

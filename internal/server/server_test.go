@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"

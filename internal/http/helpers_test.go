@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/testdata"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/testdata"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

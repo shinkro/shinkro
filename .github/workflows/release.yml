@@ -214,7 +214,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/varoOP/shinkro
+          images: ghcr.io/shinkro/shinkro
           tags: |
             type=semver,pattern={{raw}}
             type=ref,event=branch
@@ -233,7 +233,7 @@ jobs:
           context: .
           file: ./ci.Dockerfile
           platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
-          push: ${{ github.event.pull_request.head.repo.full_name == 'varoOP/shinkro' || github.event_name != 'pull_request' }}
+          push: ${{ github.event.pull_request.head.repo.full_name == 'shinkro/shinkro' || github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |

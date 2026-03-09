@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"

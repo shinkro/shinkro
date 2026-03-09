@@ -6,15 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/pkg/errors"
-	"github.com/varoOP/shinkro/pkg/plex"
+	"github.com/shinkro/shinkro/pkg/plex"
 	"io"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/pkg/sharedhttp"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/pkg/sharedhttp"
 )
 
 type plexsettingsService interface {

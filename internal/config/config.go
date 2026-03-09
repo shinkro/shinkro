@@ -12,15 +12,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/varoOP/shinkro/internal/logger"
+	"github.com/shinkro/shinkro/internal/logger"
 
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/api"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/api"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 type AppConfig struct {

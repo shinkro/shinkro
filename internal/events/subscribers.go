@@ -6,10 +6,10 @@ import (
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/animeupdate"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/notification"
-	"github.com/varoOP/shinkro/internal/plex"
+	"github.com/shinkro/shinkro/internal/animeupdate"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/notification"
+	"github.com/shinkro/shinkro/internal/plex"
 )
 
 type Subscriber struct {
@@ -256,7 +256,7 @@ func (s *Subscriber) buildPlexErrorMessage(errorType domain.PlexErrorType, error
 	case domain.PlexErrorAgentNotSupported:
 		return baseMsg + fmt.Sprintf("Error: %s\n\nAction Required: Please configure a supported agent (HAMA, MAL Agent, or Plex Agent) in your Plex library settings.", errorMsg)
 	case domain.PlexErrorExtractionFailed:
-		return baseMsg + fmt.Sprintf("Error: %s\n\nThis indicates an issue with extracting the anime ID from the metadata. Create issue on github.com/varoOP/shinkro", errorMsg)
+		return baseMsg + fmt.Sprintf("Error: %s\n\nThis indicates an issue with extracting the anime ID from the metadata. Create issue on github.com/shinkro/shinkro", errorMsg)
 	default:
 		return baseMsg + fmt.Sprintf("Error: %s", errorMsg)
 	}

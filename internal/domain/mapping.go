@@ -73,15 +73,15 @@ type AnimeMovie struct {
 type CommunityMapUrls string
 
 const (
-	CommunityMapTVDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tvdb-mal.yaml"
-	CommunityMapTMDB CommunityMapUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/tmdb-mal.yaml"
+	CommunityMapTVDB CommunityMapUrls = "https://github.com/shinkro/community-mapping/raw/main/tvdb-mal.yaml"
+	CommunityMapTMDB CommunityMapUrls = "https://github.com/shinkro/community-mapping/raw/main/tmdb-mal.yaml"
 )
 
 type MapValidationUrls string
 
 const (
-	TVDBValidationUrl MapValidationUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tvdb.json"
-	TMDBValidationUrl MapValidationUrls = "https://github.com/varoOP/shinkro-mapping/raw/main/.github/schema-tmdb.json"
+	TVDBValidationUrl MapValidationUrls = "https://github.com/shinkro/community-mapping/raw/main/.github/schema-tvdb.json"
+	TMDBValidationUrl MapValidationUrls = "https://github.com/shinkro/community-mapping/raw/main/.github/schema-tmdb.json"
 )
 
 func (s *AnimeTVShows) CheckMap(tvdbid, tvdbseason, ep int) (bool, *AnimeTV) {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/testdata"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/testdata"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"

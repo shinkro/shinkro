@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/nstratos/go-myanimelist/mal"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 )
 
 // Plex Webhook Payloads

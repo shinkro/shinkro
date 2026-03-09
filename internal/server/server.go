@@ -10,10 +10,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/anime"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/mapping"
-	"github.com/varoOP/shinkro/internal/update"
+	"github.com/shinkro/shinkro/internal/anime"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/mapping"
+	"github.com/shinkro/shinkro/internal/update"
 )
 
 type Server struct {

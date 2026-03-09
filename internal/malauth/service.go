@@ -11,7 +11,7 @@ import (
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 	"golang.org/x/oauth2"
 )
 

@@ -6,8 +6,8 @@ import (
 	"github.com/alexedwards/argon2id"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/user"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/user"
 )
 
 type Service interface {

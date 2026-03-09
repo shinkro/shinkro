@@ -7,7 +7,7 @@ import (
 	"github.com/rs/zerolog"
 
 	"github.com/pkg/errors"
-	"github.com/varoOP/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/domain"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -184,7 +184,7 @@ func (s *service) Test(ctx context.Context, notification *domain.Notification) e
 		},
 		{
 			Subject:      "Failed to Extract Anime Info",
-			Message:      "Failed to process Plex payload for: Attack on Titan\n\nError: failed to parse GUID\n\nThis indicates an issue with extracting the anime ID from the metadata. Create issue on github.com/varoOP/shinkro",
+			Message:      "Failed to process Plex payload for: Attack on Titan\n\nError: failed to parse GUID\n\nThis indicates an issue with extracting the anime ID from the metadata. Create issue on github.com/shinkro/shinkro",
 			Event:        domain.NotificationEventPlexProcessingError,
 			AnimeLibrary: "Anime",
 			MediaName:    "Attack on Titan",

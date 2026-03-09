@@ -8,12 +8,12 @@ import (
 	"github.com/asaskevich/EventBus"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/anime"
-	"github.com/varoOP/shinkro/internal/animeupdate"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/malauth"
-	"github.com/varoOP/shinkro/internal/mapping"
-	"github.com/varoOP/shinkro/internal/plexsettings"
+	"github.com/shinkro/shinkro/internal/anime"
+	"github.com/shinkro/shinkro/internal/animeupdate"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/malauth"
+	"github.com/shinkro/shinkro/internal/mapping"
+	"github.com/shinkro/shinkro/internal/plexsettings"
 )
 
 type Service interface {

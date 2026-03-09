@@ -5,8 +5,8 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/testdata"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/testdata"
 
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/assert"

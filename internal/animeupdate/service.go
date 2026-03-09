@@ -8,10 +8,10 @@ import (
 	"github.com/nstratos/go-myanimelist/mal"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/varoOP/shinkro/internal/anime"
-	"github.com/varoOP/shinkro/internal/domain"
-	"github.com/varoOP/shinkro/internal/malauth"
-	"github.com/varoOP/shinkro/internal/mapping"
+	"github.com/shinkro/shinkro/internal/anime"
+	"github.com/shinkro/shinkro/internal/domain"
+	"github.com/shinkro/shinkro/internal/malauth"
+	"github.com/shinkro/shinkro/internal/mapping"
 )
 
 type Service interface {

@@ -113,7 +113,7 @@ export const Layout = () => {
                     </Flex>
                     <Flex align="center" mt="xs">
                         {config?.check_for_updates && latestRelease?.tag_name && config?.version && !isDevOrNightly && isUpdateAvailable(config.version, latestRelease.tag_name) && (
-                            <Badge color="blue" size="xs" ml={4} component="a" href={`https://github.com/varoOP/shinkro/releases/tag/${latestRelease.tag_name}`} target="_blank" style={{ verticalAlign: 'middle', cursor: 'pointer' }}>
+                            <Badge color="blue" size="xs" ml={4} component="a" href={`https://github.com/shinkro/shinkro/releases/tag/${latestRelease.tag_name}`} target="_blank" style={{ verticalAlign: 'middle', cursor: 'pointer' }}>
                                 Update Available!
                             </Badge>
                         )}
@@ -156,7 +156,7 @@ export const Layout = () => {
                         </ActionIcon>
                     </ExternalLink>
 
-                    <ExternalLink href="https://github.com/varoOP/shinkro">
+                    <ExternalLink href="https://github.com/shinkro/shinkro">
                         <ActionIcon variant="default" radius="md" size="lg" visibleFrom={"sm"} ml={"xs"}>
                             <FaGithub style={{width: "80%", height: "80%"}}/>
                         </ActionIcon>

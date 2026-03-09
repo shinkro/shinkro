@@ -22,7 +22,7 @@ type Anime struct {
 
 type AnimeUrl string
 
-const ShinkroDB AnimeUrl = "https://github.com/varoOP/shinkro-mapping/raw/main/shinkrodb/for-shinkro.json"
+const ShinkroDB AnimeUrl = "https://github.com/shinkro/community-mapping/raw/main/shinkrodb/for-shinkro.json"
 
 type GetAnimeRequest struct {
 	IDtype PlexSupportedDBs
