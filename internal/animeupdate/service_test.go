@@ -185,6 +185,7 @@ func TestService_Store(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -235,6 +236,7 @@ func TestService_GetByPlexIDs(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -302,6 +304,7 @@ func TestService_GetByPlexIDs_EmptySlice(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -321,6 +324,7 @@ func TestService_Count(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -375,6 +379,7 @@ func TestService_GetByID(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -433,6 +438,7 @@ func TestService_ConvertAniDBToTVDB(t *testing.T) {
 		animeService,
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	).(*service)
 
@@ -519,6 +525,7 @@ func TestService_GetRecentUnique(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -580,6 +587,7 @@ func TestService_FindAllWithFilters(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 
@@ -633,6 +641,7 @@ func TestService_GetByPlexID(t *testing.T) {
 		&mockAnimeService{},
 		&mockMappingService{},
 		&mockMALAuthService{},
+		nil, // anilistauth - not needed for MAL tests
 		bus,
 	)
 

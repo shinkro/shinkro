@@ -101,6 +101,18 @@ CREATE TABLE plex_settings
 	time_stamp                  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE anilistauth 
+(
+	id 					INTEGER PRIMARY KEY,
+	client_id 			TEXT,
+	client_secret 		TEXT,
+	redirect_url		TEXT,
+	access_token 		BLOB,
+	token_iv 			BLOB,
+	created_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE mapping_settings
 (
 	id						        INTEGER PRIMARY KEY,
@@ -172,4 +184,16 @@ ALTER TABLE anime_update ADD COLUMN error_message TEXT;
 
 -- Set status to SUCCESS for existing anime_update records
 UPDATE anime_update SET status = 'SUCCESS' WHERE status IS NULL;`,
+	`-- Add anilistauth table for AniList OAuth support
+CREATE TABLE IF NOT EXISTS anilistauth 
+(
+	id 					INTEGER PRIMARY KEY,
+	client_id 			TEXT,
+	client_secret 		TEXT,
+	redirect_url		TEXT,
+	access_token 		BLOB,
+	token_iv 			BLOB,
+	created_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);`,
 }
