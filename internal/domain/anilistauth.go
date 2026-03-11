@@ -17,6 +17,7 @@ type AnilistAuth struct {
 	Config      oauth2.Config
 	AccessToken []byte
 	TokenIV     []byte
+	OAuthState  string // stored temporarily during OAuth flow, cleared after callback
 }
 
 const AnilistAuthURL = "https://anilist.co/api/v2/oauth/authorize"

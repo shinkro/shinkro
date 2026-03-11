@@ -25,8 +25,8 @@ func NewAnilistAuthRepo(log zerolog.Logger, db *DB) domain.AnilistAuthRepo {
 func (repo *AnilistAuthRepo) Store(ctx context.Context, aa *domain.AnilistAuth) error {
 	queryBuilder := repo.db.squirrel.
 		Replace("anilistauth").
-		Columns("id", "client_id", "client_secret", "redirect_url", "access_token", "token_iv").
-		Values(aa.Id, aa.Config.ClientID, aa.Config.ClientSecret, aa.Config.RedirectURL, aa.AccessToken, aa.TokenIV).
+		Columns("id", "client_id", "client_secret", "redirect_url", "access_token", "token_iv", "oauth_state").
+		Values(aa.Id, aa.Config.ClientID, aa.Config.ClientSecret, aa.Config.RedirectURL, aa.AccessToken, aa.TokenIV, aa.OAuthState).
 		RunWith(repo.db.handler)
 
 	_, err := queryBuilder.ExecContext(ctx)
@@ -34,13 +34,12 @@ func (repo *AnilistAuthRepo) Store(ctx context.Context, aa *domain.AnilistAuth) 
 		repo.log.Err(err).Msg("error executing query")
 		return err
 	}
-
 	return nil
 }
 
 func (repo *AnilistAuthRepo) Get(ctx context.Context) (*domain.AnilistAuth, error) {
 	queryBuilder := repo.db.squirrel.
-		Select("aa.client_id", "aa.client_secret", "aa.redirect_url", "aa.access_token", "aa.token_iv").
+		Select("aa.client_id", "aa.client_secret", "aa.redirect_url", "aa.access_token", "aa.token_iv", "aa.oauth_state").
 		From("anilistauth aa").
 		Where(sq.Eq{"aa.id": 1}).
 		RunWith(repo.db.handler)
@@ -57,10 +56,10 @@ func (repo *AnilistAuthRepo) Get(ctx context.Context) (*domain.AnilistAuth, erro
 		return nil, errors.Wrap(err, "error rows get anilistauth")
 	}
 
-	var clientId, clientSecret, redirectURL string
+	var clientId, clientSecret, redirectURL, oauthState string
 	var accessToken, tokenIV []byte
 
-	if err := row.Scan(&clientId, &clientSecret, &redirectURL, &accessToken, &tokenIV); err != nil {
+	if err := row.Scan(&clientId, &clientSecret, &redirectURL, &accessToken, &tokenIV, &oauthState); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
@@ -68,6 +67,7 @@ func (repo *AnilistAuthRepo) Get(ctx context.Context) (*domain.AnilistAuth, erro
 	}
 
 	aa := domain.NewAnilistAuth(clientId, clientSecret, redirectURL, accessToken, tokenIV)
+	aa.OAuthState = oauthState
 	return aa, nil
 }
 
@@ -78,7 +78,6 @@ func (repo *AnilistAuthRepo) Delete(ctx context.Context) error {
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
-		repo.log.Err(err).Msg("error building delete query")
 		return errors.Wrap(err, "error building delete query")
 	}
 
@@ -86,9 +85,7 @@ func (repo *AnilistAuthRepo) Delete(ctx context.Context) error {
 
 	_, err = repo.db.handler.ExecContext(ctx, query, args...)
 	if err != nil {
-		repo.log.Err(err).Msg("error executing delete query")
 		return errors.Wrap(err, "error executing delete query")
 	}
-
 	return nil
 }

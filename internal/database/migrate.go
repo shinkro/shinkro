@@ -109,6 +109,7 @@ CREATE TABLE anilistauth
 	redirect_url		TEXT,
 	access_token 		BLOB,
 	token_iv 			BLOB,
+	oauth_state			TEXT,
 	created_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -193,6 +194,7 @@ CREATE TABLE IF NOT EXISTS anilistauth
 	redirect_url		TEXT,
 	access_token 		BLOB,
 	token_iv 			BLOB,
+	oauth_state			TEXT,
 	created_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at 			TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );`,

@@ -169,7 +169,9 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 	return s.updateAndStore(ctx, anime, isScrobble)
 }
 
-// syncToAniList syncs the anime update to AniList if credentials are configured.
+// syncToAniList syncs the anime update to AniList if configured.
+// Mirrors exactly the same logic shinkro applies to MAL:
+// progress, status (watching/completed/rewatching), start date, finish date, rewatch count.
 // Errors are logged but never propagate — MAL sync is the primary operation.
 func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) {
 	if s.anilistAuthService == nil {
@@ -183,11 +185,16 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	}
 
 	if isScrobble {
-		if err := s.anilistAuthService.UpdateAnimeProgress(ctx, anilistID, anime.EpisodeNum); err != nil {
-			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update progress")
+		params := s.buildAnilistParams(anilistID, anime)
+		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
+			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
 			return
 		}
-		s.log.Info().Int("anilistID", anilistID).Int("episode", anime.EpisodeNum).Msg("AniList: progress updated successfully")
+		s.log.Info().
+			Int("anilistID", anilistID).
+			Int("episode", anime.EpisodeNum).
+			Str("status", string(params.Status)).
+			Msg("AniList: entry updated successfully")
 	} else {
 		rating := 0.0
 		if anime.Plex != nil {
@@ -199,6 +206,43 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		}
 		s.log.Info().Int("anilistID", anilistID).Float64("score", rating).Msg("AniList: score updated successfully")
 	}
+}
+
+// buildAnilistParams translates the shinkro AnimeUpdate into AniList params,
+// replicating the same MAL logic: start date on ep1, finish date on completion, rewatch tracking.
+func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate) anilistauth.AnilistUpdateParams {
+	details := anime.ListDetails
+	ep := anime.EpisodeNum
+
+	params := anilistauth.AnilistUpdateParams{
+		AnilistID: anilistID,
+		Progress:  ep,
+	}
+
+	isCompleted := details.TotalEpisodeNum > 0 && ep >= details.TotalEpisodeNum
+	isFirstEp := ep == 1 && details.WatchedNum == 0
+
+	switch {
+	case details.Status == "completed" && !isCompleted:
+		// Already completed before — now rewatching
+		params.Status = anilistauth.AnilistStatusRepeating
+		params.Repeat = details.RewatchNum
+	case isCompleted:
+		params.Status = anilistauth.AnilistStatusCompleted
+		now := time.Now()
+		params.CompletedAt = &now
+		if isFirstEp {
+			params.StartedAt = &now
+		}
+	default:
+		params.Status = anilistauth.AnilistStatusCurrent
+		if isFirstEp {
+			now := time.Now()
+			params.StartedAt = &now
+		}
+	}
+
+	return params
 }
 
 // resolveAniListID queries AniList GraphQL to find the AniList ID from a MAL ID.
