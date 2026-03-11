@@ -108,12 +108,15 @@ func (h anilistAuthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 	}
 	aa.OAuthState = state
 
+	// Build the auth URL BEFORE storing — Store() encrypts the ClientID in-place,
+	// so if we call AuthCodeURL after Store we get garbled binary as the client_id.
+	authCodeURL := aa.Config.AuthCodeURL(state, oauth2.AccessTypeOffline)
+
 	if err = h.service.Store(r.Context(), aa); err != nil {
 		h.encoder.Error(w, err)
 		return
 	}
 
-	authCodeURL := aa.Config.AuthCodeURL(state, oauth2.AccessTypeOffline)
 	h.encoder.StatusResponse(w, http.StatusOK, map[string]interface{}{
 		"url": authCodeURL,
 	})
