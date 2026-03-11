@@ -65,7 +65,7 @@ export const Anilist = () => {
         <main>
             <SettingsSectionHeader
                 title={"AniList"}
-                description={"Manage the connection to your AniList account here. When connected, watch progress and ratings will be synced to both MyAnimeList and AniList simultaneously."}
+                description={"Manage the connection to your AniList account here."}
             />
             {isEmptySettings ? (
                 <CenteredEmptyState
