@@ -398,6 +398,11 @@ export const APIClient = {
         delete: () =>
             appClient.Delete("api/anilistauth"),
 
+        callback: (code: string, state: string) =>
+            appClient.Get("api/anilistauth/callback", {
+                queryString: { code, state },
+            }),
+
         test: () =>
             appClient.Get("api/anilistauth/test"),
     },

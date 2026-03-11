@@ -49,7 +49,6 @@ func (h anilistAuthHandler) Routes(r chi.Router) {
 	r.Get("/", h.get)
 	r.Post("/", h.startOauth)
 	r.Delete("/", h.delete)
-	// AniList sends the callback as a GET request with ?code=...&state=...
 	r.Get("/callback", h.callback)
 }
 
@@ -66,7 +65,6 @@ func (h anilistAuthHandler) get(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	resp := anilistConfig{
 		ClientID:     aa.Config.ClientID,
 		ClientSecret: aa.Config.ClientSecret,
@@ -97,12 +95,12 @@ func (h anilistAuthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectURL := fmt.Sprintf("http://localhost:%d/api/anilistauth/callback", h.appPort)
+	// The redirect URL registered in AniList must point to the FRONTEND callback page,
+	// which will then send a postMessage to the opener and close itself.
+	// The frontend page lives at /anilistauth/callback (no /api/ prefix).
+	redirectURL := fmt.Sprintf("http://localhost:%d/anilistauth/callback", h.appPort)
 	aa := domain.NewAnilistAuth(clientID, clientSecret, redirectURL, nil, tokenIV)
 
-	// Generate state and store it in the DB alongside the credentials.
-	// This avoids cookie issues since AniList callback is a GET to the backend
-	// from a different browser context.
 	state, err := generateState(64)
 	if err != nil {
 		h.encoder.Error(w, err)
@@ -121,10 +119,9 @@ func (h anilistAuthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// callback handles the GET redirect from AniList after user authorization.
-// State is validated against the value stored in the DB (not a cookie),
-// because AniList redirects the browser directly to this endpoint and
-// browser cookies are unreliable across origins/ports.
+// callback is called by the FRONTEND page at /anilistauth/callback after AniList
+// redirects the browser there with ?code=...&state=...
+// The frontend page calls this API endpoint, gets the result, then closes the window.
 func (h anilistAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 	code := r.URL.Query().Get("code")
 	incomingState := r.URL.Query().Get("state")
@@ -137,7 +134,6 @@ func (h anilistAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Load credentials from DB and validate state
 	aa, err := h.service.GetDecrypted(r.Context())
 	if err != nil {
 		h.encoder.Error(w, err)
@@ -157,7 +153,6 @@ func (h anilistAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Exchange code for token
 	token, err := aa.Config.Exchange(r.Context(), code)
 	if err != nil {
 		h.encoder.Error(w, err)
@@ -170,7 +165,6 @@ func (h anilistAuthHandler) callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Save token and clear the state
 	aa.AccessToken = t
 	aa.OAuthState = ""
 	if err = h.service.Store(r.Context(), aa); err != nil {

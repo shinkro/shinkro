@@ -19,8 +19,8 @@ export const AnilistForm = ({ opened, onClose, loading, setLoading }: Props) => 
     const [copyError, setCopyError] = useState(false);
     const isModalOpenRef = useRef(opened);
 
-    // AniList callback is a GET handled by the backend directly
-    const redirectURL = `${window.location.origin}/api/anilistauth/callback`;
+    // This must match exactly what the backend registers with AniList
+    const redirectURL = `${window.location.origin}/anilistauth/callback`;
 
     const form = useForm<AnilistAuth>({
         initialValues: {

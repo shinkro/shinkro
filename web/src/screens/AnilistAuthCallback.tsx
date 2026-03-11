@@ -1,14 +1,37 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Flex, Group, Loader, Stack, Text, Button, Paper, Image } from "@mantine/core";
 import { FaArrowRightArrowLeft } from "react-icons/fa6";
 import { SiAnilist } from "react-icons/si";
+import { APIClient } from "@api/APIClient.ts";
 import Logo from "@app/logo.svg";
 
 export const AnilistAuthCallback = () => {
+    const [status, setStatus] = useState<"pending" | "success" | "error">("pending");
+    const [errorMsg, setErrorMsg] = useState("");
+
     useEffect(() => {
-        // AniList callback is handled server-side via GET /api/anilistauth/callback
-        // This page just notifies the opener and closes itself
-        window.opener?.postMessage({ type: "anilist-auth" }, window.location.origin);
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get("code");
+        const state = params.get("state");
+
+        if (!code || !state) {
+            setStatus("error");
+            setErrorMsg("Missing code or state in URL");
+            return;
+        }
+
+        // Call the backend API to exchange the code for a token
+        APIClient.anilistauth.callback(code, state)
+            .then(() => {
+                setStatus("success");
+                // Notify the opener (the settings page) that auth is done
+                window.opener?.postMessage({ type: "anilist-auth" }, window.location.origin);
+            })
+            .catch((err: Error) => {
+                setStatus("error");
+                setErrorMsg(err.message || "Authentication failed");
+                window.opener?.postMessage({ type: "anilist-auth" }, window.location.origin);
+            });
     }, []);
 
     return (
@@ -28,8 +51,21 @@ export const AnilistAuthCallback = () => {
                     <SiAnilist size={80} color={"#02a9ff"} />
                 </Group>
                 <Stack align="center" mt="md">
-                    <Loader size="xl" />
-                    <Text>Authenticating with AniList...</Text>
+                    {status === "pending" && (
+                        <>
+                            <Loader size="xl" />
+                            <Text>Authenticating with AniList...</Text>
+                        </>
+                    )}
+                    {status === "success" && (
+                        <Text size="xl" fw={600} c="green">Authentication Successful!</Text>
+                    )}
+                    {status === "error" && (
+                        <>
+                            <Text size="xl" fw={600} c="red">Authentication Failed</Text>
+                            <Text c="dimmed" size="sm">{errorMsg}</Text>
+                        </>
+                    )}
                     <Text c={"dimmed"}>You may close this window now.</Text>
                     <Button onClick={() => window.close()}>CLOSE WINDOW</Button>
                 </Stack>
