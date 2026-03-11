@@ -9,6 +9,7 @@ import {
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
+import {AnilistAuth, StartAnilistAuthResponse} from "@app/types/AnilistAuth";
 import {Mapping, ValidateMap} from "@app/types/Mapping";
 import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
 import { RecentAnimeItem, FindAnimeUpdatesResponse } from "@app/types/Anime";
@@ -380,6 +381,25 @@ export const APIClient = {
 
         test: () =>
             appClient.Get("api/malauth/test"),
+    },
+
+    anilistauth: {
+        start: (aa: AnilistAuth) =>
+            appClient.Post<StartAnilistAuthResponse>("api/anilistauth", {
+                queryString: {
+                    clientID: aa.clientID,
+                    clientSecret: aa.clientSecret,
+                },
+            }),
+
+        get: () =>
+            appClient.Get<AnilistAuth>("api/anilistauth"),
+
+        delete: () =>
+            appClient.Delete("api/anilistauth"),
+
+        test: () =>
+            appClient.Get("api/anilistauth/test"),
     },
 
     mapping: {
