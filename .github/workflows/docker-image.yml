@@ -1,0 +1,263 @@
+name: build
+
+on:
+  push:
+    branches:
+      - "main"
+      - "develop"
+    tags:
+      - "v*"
+  pull_request:
+
+env:
+  REGISTRY: ghcr.io
+  REGISTRY_IMAGE: ghcr.io/${{ github.repository }}
+  GO_VERSION: '1.25.5'
+  NODE_VERSION: '24.12.0'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  web:
+    name: Build web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Set up corepack
+        run: npm install -g corepack@latest && corepack enable
+
+      # It can not be done before enable corepack
+      - name: Set up cache
+        uses: actions/setup-node@v6
+        with:
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Fetch web dependencies
+        working-directory: web
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web frontend
+        working-directory: web
+        run: CI= pnpm run build
+
+      - name: Upload web production build
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-dist
+          path: web/dist
+  test:
+    name: Test (Unit Tests)
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download web production build
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+
+      - name: Run unit tests
+        run: go test -v $(go list ./... | grep -v test/integration)
+
+  test-integration:
+    name: Test (Integration Tests)
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download web production build
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+
+      - name: Run integration tests
+        run: go test -tags=integration -v ./...
+
+  goreleaserbuild:
+    name: Build Go binaries
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download web production build
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+
+      - name: Run GoReleaser build
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: ~> v2
+          args: release --clean --skip=validate,publish --parallelism 99
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: shinkro
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  goreleaser:
+    name: Build and publish binaries
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download web production build
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+
+      - name: Run GoReleaser build and publish tags
+        uses: goreleaser/goreleaser-action@v7
+        with:
+          distribution: goreleaser
+          version: ~> v2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: shinkro
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+  docker:
+    name: Build and publish Docker images
+    runs-on: ubuntu-latest
+    needs: web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Download web production build
+        uses: actions/download-artifact@v8
+        with:
+          name: web-dist
+          path: web/dist
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/shinkro/shinkro
+          tags: |
+            type=semver,pattern={{raw}}
+            type=ref,event=branch
+            type=ref,event=pr
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and publish image
+        id: docker_build
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ./ci.Dockerfile
+          platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+          push: ${{ github.event.pull_request.head.repo.full_name == 'shinkro/shinkro' || github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ github.event.pull_request.head.sha }}
+
+      - name: Image digest
+        run: echo ${{ steps.docker_build.outputs.digest }}
+
+      # Mirror the already-pushed multi-arch manifest to the legacy package.
+      # Login with VAROOP_PAT after the primary push to avoid credential conflicts.
+      - name: Login to GitHub Container Registry (varoOP legacy)
+        if: github.event.pull_request.head.repo.full_name == 'shinkro/shinkro' || github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: varoOP
+          password: ${{ secrets.VAROOP_PAT }}
+
+      - name: Mirror image to legacy varoop/shinkro package
+        if: github.event.pull_request.head.repo.full_name == 'shinkro/shinkro' || github.event_name != 'pull_request'
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" | while read tag; do
+            legacy_tag=$(echo "$tag" | sed 's|ghcr.io/shinkro/shinkro|ghcr.io/varoop/shinkro|')
+            docker buildx imagetools create -t "$legacy_tag" "$tag"
+          done
