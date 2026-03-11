@@ -191,7 +191,7 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	} else {
 		rating := 0.0
 		if anime.Plex != nil {
-			rating = anime.Plex.Rating
+			rating = float64(anime.Plex.Rating)
 		}
 		if err := s.anilistAuthService.UpdateAnimeScore(ctx, anilistID, rating); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update score")
