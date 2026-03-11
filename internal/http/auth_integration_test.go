@@ -70,6 +70,7 @@ func setupTestHTTPServer(t *testing.T) (*httptest.Server, *database.DB, api.Serv
 		nil, // plexService - not needed for auth tests
 		nil, // plexsettingsService
 		nil, // malauthService
+		nil, // anilistAuthService
 		apiService,
 		authService,
 		nil, // mappingService

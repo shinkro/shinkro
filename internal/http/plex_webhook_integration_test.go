@@ -77,7 +77,7 @@ func setupTestHTTPServerForPlex(t *testing.T) (*httptest.Server, *database.DB, *
 	mapService := mapping.NewService(log, mappingRepo)
 	plexSettingsService := plexsettings.NewService(testConfig, log, plexSettingsRepo)
 	notificationService := notification.NewService(log, notificationRepo)
-	animeUpdateService := animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
+	animeUpdateService := animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, nil, bus)
 	plexService := plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, bus)
 	userService := user.NewService(userRepo, log)
 	authService := auth.NewService(log, userService)
@@ -105,6 +105,7 @@ func setupTestHTTPServerForPlex(t *testing.T) (*httptest.Server, *database.DB, *
 		plexService,
 		plexSettingsService,
 		malauthService,
+		nil, // anilistAuthService
 		apiService,
 		authService,
 		mapService,
