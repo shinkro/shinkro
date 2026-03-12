@@ -51,6 +51,7 @@ type NotificationPayload struct {
 	MALID           int
 	AnilistID       int
 	UpdatedServices []string // e.g. ["MyAnimeList"], ["AniList"], ["MyAnimeList", "AniList"]
+	AnilistSyncError string  // non-empty if AniList sync failed (but MAL succeeded)
 	AnimeLibrary    string
 	EpisodesWatched int
 	EpisodesTotal   int

@@ -182,6 +182,12 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	anilistID, err := s.resolveAniListID(ctx, anime.MALId)
 	if err != nil {
 		s.log.Debug().Err(err).Int("malID", anime.MALId).Msg("AniList: could not resolve AniList ID, skipping sync")
+		s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+			AnimeUpdate:  anime,
+			AnilistID:    0,
+			ErrorMessage: err.Error(),
+			Timestamp:    time.Now(),
+		})
 		return 0, false
 	}
 
@@ -189,6 +195,12 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		params := s.buildAnilistParams(anilistID, anime)
 		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
+			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+				AnimeUpdate:  anime,
+				AnilistID:    anilistID,
+				ErrorMessage: err.Error(),
+				Timestamp:    time.Now(),
+			})
 			return anilistID, false
 		}
 		s.log.Info().
@@ -203,6 +215,12 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		}
 		if err := s.anilistAuthService.UpdateAnimeScore(ctx, anilistID, rating); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update score")
+			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+				AnimeUpdate:  anime,
+				AnilistID:    anilistID,
+				ErrorMessage: err.Error(),
+				Timestamp:    time.Now(),
+			})
 			return anilistID, false
 		}
 		s.log.Info().Int("anilistID", anilistID).Float64("score", rating).Msg("AniList: score updated successfully")

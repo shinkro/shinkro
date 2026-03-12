@@ -9,6 +9,7 @@ const (
 	EventNotificationSend     = "notification:send"
 	EventAnimeUpdateSuccess   = "animeupdate:success"
 	EventAnimeUpdateFailed    = "animeupdate:failed"
+	EventAnilistSyncFailed    = "anilist:sync:failed"
 )
 
 // PlexProcessedSuccessEvent is published when a Plex payload is successfully processed (extraction complete, before MAL update)
@@ -41,6 +42,13 @@ type AnimeUpdateSuccessEvent struct {
 	AnilistSynced bool
 	AnilistID     int
 	Timestamp     time.Time
+}
+
+type AnilistSyncFailedEvent struct {
+	AnimeUpdate  *AnimeUpdate
+	AnilistID    int
+	ErrorMessage string
+	Timestamp    time.Time
 }
 
 // AnimeUpdateFailedEvent is published when MAL update fails

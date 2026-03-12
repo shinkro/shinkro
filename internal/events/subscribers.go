@@ -41,6 +41,7 @@ func (s *Subscriber) Register() {
 	s.eventbus.Subscribe(domain.EventNotificationSend, s.handleNotificationSend)
 	s.eventbus.Subscribe(domain.EventAnimeUpdateSuccess, s.handleAnimeUpdateSuccess)
 	s.eventbus.Subscribe(domain.EventAnimeUpdateFailed, s.handleAnimeUpdateFailed)
+	s.eventbus.Subscribe(domain.EventAnilistSyncFailed, s.handleAnilistSyncFailed)
 }
 
 func (s *Subscriber) handlePlexProcessedSuccess(event *domain.PlexProcessedSuccessEvent) {
@@ -106,7 +107,6 @@ func (s *Subscriber) handleAnimeUpdateSuccess(event *domain.AnimeUpdateSuccessEv
 		Int("malID", event.AnimeUpdate.MALId).
 		Msg("anime update succeeded")
 
-	// Send success notification with detailed info
 	if event.AnimeUpdate != nil {
 		// Build the list of services that were actually updated
 		updatedServices := []string{"MyAnimeList"}
@@ -161,6 +161,28 @@ func (s *Subscriber) handleAnimeUpdateFailed(event *domain.AnimeUpdateFailedEven
 		PlexEvent:    event.AnimeUpdate.Plex.Event,
 		PlexSource:   event.AnimeUpdate.Plex.Source,
 		Timestamp:    event.Timestamp,
+	}
+	s.notificationService.Send(domain.NotificationEventAnimeUpdateError, payload)
+}
+
+func (s *Subscriber) handleAnilistSyncFailed(event *domain.AnilistSyncFailedEvent) {
+	s.log.Trace().
+		Str("event", domain.EventAnilistSyncFailed).
+		Int("anilistID", event.AnilistID).
+		Str("error", event.ErrorMessage).
+		Msg("anilist sync failed")
+
+	animeTitle := s.getAnimeTitle(event.AnimeUpdate)
+	payload := domain.NotificationPayload{
+		Subject:   "AniList Sync Failed",
+		Message:   fmt.Sprintf("Failed to sync to AniList for: %s\n\nError: %s", animeTitle, event.ErrorMessage),
+		MediaName: animeTitle,
+		MALID:     event.AnimeUpdate.MALId,
+		AnilistID: event.AnilistID,
+		PlexEvent: event.AnimeUpdate.Plex.Event,
+		PlexSource: event.AnimeUpdate.Plex.Source,
+		AnimeLibrary: event.AnimeUpdate.Plex.Metadata.LibrarySectionTitle,
+		Timestamp: event.Timestamp,
 	}
 	s.notificationService.Send(domain.NotificationEventAnimeUpdateError, payload)
 }
