@@ -49,6 +49,8 @@ type NotificationPayload struct {
 	Event           NotificationEvent
 	MediaName       string
 	MALID           int
+	AnilistID       int
+	UpdatedServices []string // e.g. ["MyAnimeList"], ["AniList"], ["MyAnimeList", "AniList"]
 	AnimeLibrary    string
 	EpisodesWatched int
 	EpisodesTotal   int

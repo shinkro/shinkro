@@ -129,7 +129,7 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 	s.log.Info().Interface("status", anime.ListStatus).Msg("MyAnimeList Updated Successfully")
 
 	// Sync to AniList if configured (non-blocking, errors are logged only)
-	s.syncToAniList(ctx, anime, isScrobble)
+	anilistID, anilistSynced := s.syncToAniList(ctx, anime, isScrobble)
 
 	anime.Status = domain.AnimeUpdateStatusSuccess
 
@@ -138,9 +138,11 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 	}
 
 	s.bus.Publish(domain.EventAnimeUpdateSuccess, &domain.AnimeUpdateSuccessEvent{
-		PlexID:      anime.PlexId,
-		AnimeUpdate: anime,
-		Timestamp:   time.Now(),
+		PlexID:        anime.PlexId,
+		AnimeUpdate:   anime,
+		AnilistSynced: anilistSynced,
+		AnilistID:     anilistID,
+		Timestamp:     time.Now(),
 	})
 
 	return nil
@@ -170,25 +172,24 @@ func (s *service) updateFromDBAndStore(ctx context.Context, anime *domain.AnimeU
 }
 
 // syncToAniList syncs the anime update to AniList if configured.
-// Mirrors exactly the same logic shinkro applies to MAL:
-// progress, status (watching/completed/rewatching), start date, finish date, rewatch count.
+// Returns the AniList ID and whether the sync was successful.
 // Errors are logged but never propagate — MAL sync is the primary operation.
-func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) {
+func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) (int, bool) {
 	if s.anilistAuthService == nil {
-		return
+		return 0, false
 	}
 
 	anilistID, err := s.resolveAniListID(ctx, anime.MALId)
 	if err != nil {
 		s.log.Debug().Err(err).Int("malID", anime.MALId).Msg("AniList: could not resolve AniList ID, skipping sync")
-		return
+		return 0, false
 	}
 
 	if isScrobble {
 		params := s.buildAnilistParams(anilistID, anime)
 		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
-			return
+			return anilistID, false
 		}
 		s.log.Info().
 			Int("anilistID", anilistID).
@@ -202,10 +203,11 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		}
 		if err := s.anilistAuthService.UpdateAnimeScore(ctx, anilistID, rating); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update score")
-			return
+			return anilistID, false
 		}
 		s.log.Info().Int("anilistID", anilistID).Float64("score", rating).Msg("AniList: score updated successfully")
 	}
+	return anilistID, true
 }
 
 // buildAnilistParams translates the shinkro AnimeUpdate into AniList params,

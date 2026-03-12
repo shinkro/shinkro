@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -189,7 +190,7 @@ func (a *discordSender) buildEmbed(event domain.NotificationEvent, payload domai
 
 	if payload.AnimeStatus != "" {
 		f := DiscordEmbedsFields{
-			Name:   "MAL Watch Status",
+			Name:   "Watch Status",
 			Value:  payload.AnimeStatus,
 			Inline: true,
 		}
@@ -255,6 +256,17 @@ func (a *discordSender) buildEmbed(event domain.NotificationEvent, payload domai
 		Color:       int(color),
 		Fields:      fields,
 		Timestamp:   time.Now(),
+	}
+
+	if len(payload.UpdatedServices) > 0 {
+		servicesField := DiscordEmbedsFields{
+			Name:   "Updated Services",
+			Value:  strings.Join(payload.UpdatedServices, " + "),
+			Inline: true,
+		}
+		fields = append(fields, servicesField)
+		embed.Fields = fields
+		embed.Description = fmt.Sprintf("Synced to %s", strings.Join(payload.UpdatedServices, " & "))
 	}
 
 	if payload.Subject != "" && payload.Message != "" {

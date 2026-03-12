@@ -108,9 +108,17 @@ func (s *Subscriber) handleAnimeUpdateSuccess(event *domain.AnimeUpdateSuccessEv
 
 	// Send success notification with detailed info
 	if event.AnimeUpdate != nil {
+		// Build the list of services that were actually updated
+		updatedServices := []string{"MyAnimeList"}
+		if event.AnilistSynced {
+			updatedServices = append(updatedServices, "AniList")
+		}
+
 		payload := domain.NotificationPayload{
 			MediaName:       event.AnimeUpdate.ListDetails.Title,
 			MALID:           event.AnimeUpdate.MALId,
+			AnilistID:       event.AnilistID,
+			UpdatedServices: updatedServices,
 			AnimeLibrary:    event.AnimeUpdate.Plex.Metadata.LibrarySectionTitle,
 			EpisodesWatched: event.AnimeUpdate.ListStatus.NumEpisodesWatched,
 			EpisodesTotal:   event.AnimeUpdate.ListDetails.TotalEpisodeNum,

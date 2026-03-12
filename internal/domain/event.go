@@ -36,9 +36,11 @@ type NotificationSendEvent struct {
 
 // AnimeUpdateSuccessEvent is published when MAL update succeeds
 type AnimeUpdateSuccessEvent struct {
-	PlexID      int64
-	AnimeUpdate *AnimeUpdate
-	Timestamp   time.Time
+	PlexID        int64
+	AnimeUpdate   *AnimeUpdate
+	AnilistSynced bool
+	AnilistID     int
+	Timestamp     time.Time
 }
 
 // AnimeUpdateFailedEvent is published when MAL update fails
