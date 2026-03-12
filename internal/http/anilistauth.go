@@ -84,9 +84,15 @@ func (h anilistAuthHandler) delete(w http.ResponseWriter, r *http.Request) {
 func (h anilistAuthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 	clientID := r.URL.Query().Get("clientID")
 	clientSecret := r.URL.Query().Get("clientSecret")
+	redirectURL := r.URL.Query().Get("redirectURL")
 	if clientID == "" || clientSecret == "" {
 		h.encoder.Error(w, errors.New("clientID or clientSecret is empty"))
 		return
+	}
+	// Use the redirectURL sent by the frontend (which knows its own origin/IP).
+	// Fall back to localhost only if not provided.
+	if redirectURL == "" {
+		redirectURL = fmt.Sprintf("http://localhost:%d/anilistauth/callback", h.appPort)
 	}
 
 	tokenIV, err := generateRandomIV()
@@ -94,11 +100,6 @@ func (h anilistAuthHandler) startOauth(w http.ResponseWriter, r *http.Request) {
 		h.encoder.Error(w, err)
 		return
 	}
-
-	// The redirect URL registered in AniList must point to the FRONTEND callback page,
-	// which will then send a postMessage to the opener and close itself.
-	// The frontend page lives at /anilistauth/callback (no /api/ prefix).
-	redirectURL := fmt.Sprintf("http://localhost:%d/anilistauth/callback", h.appPort)
 	aa := domain.NewAnilistAuth(clientID, clientSecret, redirectURL, nil, tokenIV)
 
 	state, err := generateState(64)

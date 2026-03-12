@@ -389,6 +389,7 @@ export const APIClient = {
                 queryString: {
                     clientID: aa.clientID,
                     clientSecret: aa.clientSecret,
+                    redirectURL: aa.redirectURL,
                 },
             }),
 
