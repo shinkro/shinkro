@@ -192,7 +192,12 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	}
 
 	if isScrobble {
-		params := s.buildAnilistParams(anilistID, anime)
+		anilistDates, err := s.anilistAuthService.GetAnimeEntry(ctx, anilistID)
+		if err != nil {
+			s.log.Debug().Err(err).Int("anilistID", anilistID).Msg("AniList: could not fetch existing entry dates, proceeding without them")
+			anilistDates = &anilistauth.AnilistEntryDates{}
+		}
+		params := s.buildAnilistParams(anilistID, anime, anilistDates)
 		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
 			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
@@ -228,9 +233,15 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	return anilistID, true
 }
 
-// buildAnilistParams translates the shinkro AnimeUpdate into AniList params,
-// replicating the same MAL logic: start date on ep1, finish date on completion, rewatch tracking.
-func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate) anilistauth.AnilistUpdateParams {
+// buildAnilistParams translates the shinkro AnimeUpdate into AniList params.
+//
+// Date resolution uses cross-service fallback:
+//   - StartedAt: use MAL date if set; else use AniList date if set; else use now() only on ep1.
+//   - CompletedAt: use MAL date if set; else use AniList date if set; else use now() on completion.
+//
+// This means adding AniList after MAL (or vice versa) will always backfill the missing dates
+// from whichever service already has them, without overwriting dates that both services have.
+func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate, anilistDates *anilistauth.AnilistEntryDates) anilistauth.AnilistUpdateParams {
 	details := anime.ListDetails
 	ep := anime.EpisodeNum
 
@@ -242,6 +253,33 @@ func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate) a
 	isCompleted := details.TotalEpisodeNum > 0 && ep >= details.TotalEpisodeNum
 	isFirstEp := ep == 1 && details.WatchedNum == 0
 
+	// Resolve StartedAt:
+	// 1) MAL has a date → use it (backfills AniList if it didn't have one)
+	// 2) AniList already has a date → send nil (don't touch it)
+	// 3) Neither has one, but it's ep1 → set now()
+	// 4) Neither has one and ep > 1 → send nil (no date to set)
+	var startedAt *time.Time
+	if details.MALStartDate != "" {
+		if t, err := time.Parse("2006-01-02", details.MALStartDate); err == nil {
+			startedAt = &t
+		}
+	} else if anilistDates.StartedAt == nil && isFirstEp {
+		now := time.Now()
+		startedAt = &now
+	}
+	// if anilistDates.StartedAt != nil and MAL has no date: leave startedAt nil → AniList keeps its own
+
+	// Resolve CompletedAt (same cross-fallback logic):
+	var completedAt *time.Time
+	if details.MALFinishDate != "" {
+		if t, err := time.Parse("2006-01-02", details.MALFinishDate); err == nil {
+			completedAt = &t
+		}
+	} else if anilistDates.CompletedAt == nil && isCompleted {
+		now := time.Now()
+		completedAt = &now
+	}
+
 	switch {
 	case details.Status == "completed" && !isCompleted:
 		// Already completed before — now rewatching
@@ -249,17 +287,11 @@ func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate) a
 		params.Repeat = details.RewatchNum
 	case isCompleted:
 		params.Status = anilistauth.AnilistStatusCompleted
-		now := time.Now()
-		params.CompletedAt = &now
-		if isFirstEp {
-			params.StartedAt = &now
-		}
+		params.CompletedAt = completedAt
+		params.StartedAt = startedAt
 	default:
 		params.Status = anilistauth.AnilistStatusCurrent
-		if isFirstEp {
-			now := time.Now()
-			params.StartedAt = &now
-		}
+		params.StartedAt = startedAt
 	}
 
 	return params
@@ -345,7 +377,7 @@ func (s *service) publishAnimeUpdateFailed(anime *domain.AnimeUpdate, errorType 
 }
 
 func (s *service) fetchAnimeDetails(ctx context.Context, client *mal.Client, anime *domain.AnimeUpdate) error {
-	aa, _, err := client.Anime.Details(ctx, anime.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
+	aa, _, err := client.Anime.Details(ctx, anime.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched,start_date,finish_date}"})
 	if err != nil {
 		return err
 	}
@@ -357,6 +389,8 @@ func (s *service) fetchAnimeDetails(ctx context.Context, client *mal.Client, ani
 		aa.MyListStatus.NumEpisodesWatched,
 		aa.Title,
 		aa.MainPicture.Medium,
+		aa.MyListStatus.StartDate,
+		aa.MyListStatus.FinishDate,
 	)
 	anime.UpdateListDetails(details)
 	return nil

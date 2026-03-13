@@ -39,12 +39,18 @@ type AnilistUpdateParams struct {
 	Repeat      int // number of rewatches
 }
 
+type AnilistEntryDates struct {
+	StartedAt   *time.Time
+	CompletedAt *time.Time
+}
+
 type Service interface {
 	Store(ctx context.Context, aa *domain.AnilistAuth) error
 	Get(ctx context.Context) (*domain.AnilistAuth, error)
 	Delete(ctx context.Context) error
 	GetDecrypted(ctx context.Context) (*domain.AnilistAuth, error)
 	GetAccessToken(ctx context.Context) (string, error)
+	GetAnimeEntry(ctx context.Context, anilistID int) (*AnilistEntryDates, error)
 	UpdateAnimeEntry(ctx context.Context, params AnilistUpdateParams) error
 	UpdateAnimeScore(ctx context.Context, anilistID int, score float64) error
 }
@@ -146,6 +152,82 @@ func (s *service) GetAccessToken(ctx context.Context) (string, error) {
 		return currentToken.AccessToken, nil
 	}
 	return "", errors.New("anilist token expired, please re-authenticate")
+}
+
+// GetAnimeEntry fetches the existing start/finish dates for an anime entry on AniList.
+// Returns nil dates for fields that are not set on AniList.
+func (s *service) GetAnimeEntry(ctx context.Context, anilistID int) (*AnilistEntryDates, error) {
+	accessToken, err := s.GetAccessToken(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get anilist access token")
+	}
+
+	query := `
+query ($mediaId: Int) {
+  MediaList(mediaId: $mediaId, type: ANIME) {
+    startedAt { year month day }
+    completedAt { year month day }
+  }
+}`
+	variables := map[string]interface{}{"mediaId": anilistID}
+
+	type fuzzyDate struct {
+		Year  int `json:"year"`
+		Month int `json:"month"`
+		Day   int `json:"day"`
+	}
+	var result struct {
+		Data struct {
+			MediaList struct {
+				StartedAt   fuzzyDate `json:"startedAt"`
+				CompletedAt fuzzyDate `json:"completedAt"`
+			} `json:"MediaList"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+
+	body, err := json.Marshal(map[string]interface{}{"query": query, "variables": variables})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal graphql request")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, domain.AnilistGraphQLURL, bytes.NewReader(body))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to execute request")
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to read response")
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return nil, errors.Wrap(err, "failed to parse response")
+	}
+	if len(result.Errors) > 0 {
+		// Entry doesn't exist yet on AniList — that's fine, return empty dates
+		return &AnilistEntryDates{}, nil
+	}
+
+	dates := &AnilistEntryDates{}
+	if fd := result.Data.MediaList.StartedAt; fd.Year > 0 {
+		t := time.Date(fd.Year, time.Month(fd.Month), fd.Day, 0, 0, 0, 0, time.UTC)
+		dates.StartedAt = &t
+	}
+	if fd := result.Data.MediaList.CompletedAt; fd.Year > 0 {
+		t := time.Date(fd.Year, time.Month(fd.Month), fd.Day, 0, 0, 0, 0, time.UTC)
+		dates.CompletedAt = &t
+	}
+	return dates, nil
 }
 
 // UpdateAnimeEntry updates all relevant fields on AniList in a single GraphQL mutation.

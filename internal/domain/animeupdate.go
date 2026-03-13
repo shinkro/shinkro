@@ -44,6 +44,8 @@ type ListDetails struct {
 	WatchedNum      int             `json:"watchedNum"`
 	Title           string          `json:"title"`
 	PictureURL      string          `json:"pictureUrl"`
+	MALStartDate  string `json:"malStartDate"`
+	MALFinishDate string `json:"malFinishDate"`
 }
 
 // AnimeUpdateStatusType represents the status of an anime update
@@ -141,7 +143,7 @@ func (ap *AnimeUpdate) newOptions() ([]mal.UpdateMyAnimeListStatusOption, error)
 
 // BuildListDetailsFromMALResponse creates ListDetails from MAL API response.
 // This is a pure transformation function - no I/O.
-func BuildListDetailsFromMALResponse(status mal.AnimeStatus, rewatchNum, totalEpisodes, watchedNum int, title, pictureURL string) ListDetails {
+func BuildListDetailsFromMALResponse(status mal.AnimeStatus, rewatchNum, totalEpisodes, watchedNum int, title, pictureURL, startDate, finishDate string) ListDetails {
 	return ListDetails{
 		Status:          status,
 		RewatchNum:      rewatchNum,
@@ -149,6 +151,8 @@ func BuildListDetailsFromMALResponse(status mal.AnimeStatus, rewatchNum, totalEp
 		WatchedNum:      watchedNum,
 		Title:           title,
 		PictureURL:      pictureURL,
+		MALStartDate:    startDate,
+		MALFinishDate:   finishDate,
 	}
 }
 
