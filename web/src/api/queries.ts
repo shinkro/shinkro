@@ -6,6 +6,7 @@ import {
     SettingsKeys,
     PlexSettingsKeys,
     MalAuthKeys,
+    AnilistAuthKeys,
     MappingKeys,
     LogKeys,
     PlexKeys,
@@ -36,6 +37,15 @@ export const MalQueryOptions = (enabled: boolean = true) =>
     queryOptions({
         queryKey: MalAuthKeys.config(),
         queryFn: () => APIClient.malauth.get(),
+        enabled: enabled,
+        retry: false,
+        refetchOnWindowFocus: false,
+    });
+
+export const AnilistQueryOptions = (enabled: boolean = true) =>
+    queryOptions({
+        queryKey: AnilistAuthKeys.config(),
+        queryFn: () => APIClient.anilistauth.get(),
         enabled: enabled,
         retry: false,
         refetchOnWindowFocus: false,

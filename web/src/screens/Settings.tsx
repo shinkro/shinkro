@@ -44,7 +44,7 @@ export const Settings = () => {
             <Stack gap="md" p="md">
                 <Title order={2}>Settings</Title>
             <Paper mt="md" withBorder p={"md"} h={"100%"} mih={"80vh"}>
-                {normalizedPathname === '/settings' || (normalizedPathname.startsWith('/settings/') && !normalizedPathname.includes('/plex') && !normalizedPathname.includes('/mal')) ? (
+                {normalizedPathname === '/settings' || (normalizedPathname.startsWith('/settings/') && !normalizedPathname.includes('/plex') && !normalizedPathname.includes('/mal') && !normalizedPathname.includes('/anilist')) ? (
                     <Tabs value={getActiveTab()} onChange={handleTabChange} variant="default">
                         <Tabs.List justify="space-between">
                             <Tabs.Tab value="application" leftSection={<FaCog size={14} />}>

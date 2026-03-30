@@ -24,12 +24,14 @@ import {Notifications} from "@screens/settings/Notifications";
 import {Logs as SettingsLogs} from "@screens/settings/Logs";
 import {Plex} from "@screens/settings/Plex";
 import {Mal} from "@screens/settings/Mal";
+import {Anilist} from "@screens/settings/Anilist";
 import {MapSettings} from "@screens/settings/Mapping";
 import {AuthContext, SettingsContext} from "@utils/Context";
 import {TanStackRouterDevtools} from "@tanstack/react-router-devtools";
 import {ReactQueryDevtools} from "@tanstack/react-query-devtools";
 import {queryClient} from "@api/QueryClient";
 import {MalAuthCallback} from "@screens/MalAuthCallback.tsx";
+import {AnilistAuthCallback} from "@screens/AnilistAuthCallback.tsx";
 import {Loader, Center} from "@mantine/core";
 import {
     plexCountsQueryOptions,
@@ -39,6 +41,7 @@ import {
     ConfigQueryOptions,
     PlexSettingsQueryOptions,
     MalQueryOptions,
+    AnilistQueryOptions,
     MappingQueryOptions,
     NotificationsQueryOptions,
     ApikeysQueryOptions,
@@ -249,6 +252,21 @@ export const SettingsMalRoute = createRoute({
     component: Mal,
 });
 
+export const SettingsAnilistRoute = createRoute({
+    getParentRoute: () => SettingsRoute,
+    path: "anilist",
+    loader: (opts) => opts.context.queryClient.ensureQueryData(AnilistQueryOptions()),
+    pendingMs: 3000,
+    component: Anilist,
+});
+
+export const AnilistAuthCallbackRoute = createRoute({
+    getParentRoute: () => RootRoute,
+    component: AnilistAuthCallback,
+    path: "anilistauth/callback",
+    pendingMs: 3000,
+});
+
 export const SettingsMappingRoute = createRoute({
     getParentRoute: () => SettingsRoute,
     path: "mapping",
@@ -294,6 +312,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsLogsRoute,
     SettingsPlexRoute,
     SettingsMalRoute,
+    SettingsAnilistRoute,
     SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
@@ -303,6 +322,7 @@ const routeTree = RootRoute.addChildren([
     LoginRoute,
     OnboardRoute,
     MalAuthRoute,
+    AnilistAuthCallbackRoute,
     authenticatedTree,
 ]);
 

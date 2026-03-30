@@ -1,7 +1,11 @@
 package animeupdate
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"io"
+	"net/http"
 	"time"
 
 	"github.com/asaskevich/EventBus"
@@ -9,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/shinkro/shinkro/internal/anime"
+	"github.com/shinkro/shinkro/internal/anilistauth"
 	"github.com/shinkro/shinkro/internal/domain"
 	"github.com/shinkro/shinkro/internal/malauth"
 	"github.com/shinkro/shinkro/internal/mapping"
@@ -31,16 +36,18 @@ type service struct {
 	animeService   anime.Service
 	mapService     mapping.Service
 	malauthService malauth.Service
+	anilistAuthService anilistauth.Service
 	bus            EventBus.Bus
 }
 
-func NewService(log zerolog.Logger, repo domain.AnimeUpdateRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, bus EventBus.Bus) Service {
+func NewService(log zerolog.Logger, repo domain.AnimeUpdateRepo, animeSvc anime.Service, mapSvc mapping.Service, malauthSvc malauth.Service, anilistAuthSvc anilistauth.Service, bus EventBus.Bus) Service {
 	return &service{
 		log:            log.With().Str("module", "animeUpdate").Logger(),
 		repo:           repo,
 		animeService:   animeSvc,
 		mapService:     mapSvc,
 		malauthService: malauthSvc,
+		anilistAuthService: anilistAuthSvc,
 		bus:            bus,
 	}
 }
@@ -140,11 +147,16 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 		return err
 	}
 
+	// Sync to AniList if configured (non-blocking — errors are logged only)
+	anilistID, anilistSynced := s.syncToAniList(ctx, anime, isScrobble)
+
 	// Publish success event
 	s.bus.Publish(domain.EventAnimeUpdateSuccess, &domain.AnimeUpdateSuccessEvent{
-		PlexID:      anime.PlexId,
-		AnimeUpdate: anime,
-		Timestamp:   time.Now(),
+		PlexID:        anime.PlexId,
+		AnimeUpdate:   anime,
+		AnilistSynced: anilistSynced,
+		AnilistID:     anilistID,
+		Timestamp:     time.Now(),
 	})
 
 	return nil
@@ -195,7 +207,7 @@ func (s *service) publishAnimeUpdateFailed(anime *domain.AnimeUpdate, errorType 
 
 // fetchAnimeDetails calls MAL API to get current anime list details
 func (s *service) fetchAnimeDetails(ctx context.Context, client *mal.Client, anime *domain.AnimeUpdate) error {
-	aa, _, err := client.Anime.Details(ctx, anime.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched}"})
+	aa, _, err := client.Anime.Details(ctx, anime.MALId, mal.Fields{"num_episodes", "title", "main_picture{medium,large}", "my_list_status{status,num_times_rewatched,num_episodes_watched,start_date,finish_date}"})
 	if err != nil {
 		return err
 	}
@@ -207,6 +219,8 @@ func (s *service) fetchAnimeDetails(ctx context.Context, client *mal.Client, ani
 		aa.MyListStatus.NumEpisodesWatched,
 		aa.Title,
 		aa.MainPicture.Medium,
+		aa.MyListStatus.StartDate,
+		aa.MyListStatus.FinishDate,
 	)
 	anime.UpdateListDetails(details)
 
@@ -289,3 +303,186 @@ func (s *service) GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.
 func (s *service) FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error) {
 	return s.repo.FindAllWithFilters(ctx, params)
 }
+
+// syncToAniList syncs the anime update to AniList if the service is configured.
+// Returns the AniList ID and whether the sync succeeded.
+// Errors are always non-fatal — MAL sync is the primary operation.
+func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, isScrobble bool) (int, bool) {
+	if s.anilistAuthService == nil {
+		return 0, false
+	}
+
+	anilistID, err := s.resolveAniListID(ctx, anime.MALId)
+	if err != nil {
+		s.log.Debug().Err(err).Int("malID", anime.MALId).Msg("AniList: could not resolve AniList ID, skipping sync")
+		s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+			AnimeUpdate:  anime,
+			AnilistID:    0,
+			ErrorMessage: err.Error(),
+			Timestamp:    time.Now(),
+		})
+		return 0, false
+	}
+
+	if isScrobble {
+		anilistDates, err := s.anilistAuthService.GetAnimeEntry(ctx, anilistID)
+		if err != nil {
+			s.log.Debug().Err(err).Int("anilistID", anilistID).Msg("AniList: could not fetch existing entry dates, proceeding without them")
+			anilistDates = &anilistauth.AnilistEntryDates{}
+		}
+		params := s.buildAnilistParams(anilistID, anime, anilistDates)
+		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
+			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
+			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+				AnimeUpdate:  anime,
+				AnilistID:    anilistID,
+				ErrorMessage: err.Error(),
+				Timestamp:    time.Now(),
+			})
+			return anilistID, false
+		}
+		s.log.Info().
+			Int("anilistID", anilistID).
+			Int("episode", anime.EpisodeNum).
+			Str("status", string(params.Status)).
+			Msg("AniList: entry updated successfully")
+	} else {
+		rating := 0.0
+		if anime.Plex != nil {
+			rating = float64(anime.Plex.Rating)
+		}
+		if err := s.anilistAuthService.UpdateAnimeScore(ctx, anilistID, rating); err != nil {
+			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update score")
+			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
+				AnimeUpdate:  anime,
+				AnilistID:    anilistID,
+				ErrorMessage: err.Error(),
+				Timestamp:    time.Now(),
+			})
+			return anilistID, false
+		}
+		s.log.Info().Int("anilistID", anilistID).Float64("score", rating).Msg("AniList: score updated successfully")
+	}
+	return anilistID, true
+}
+
+// buildAnilistParams translates a shinkro AnimeUpdate into AniList mutation params.
+//
+// Date resolution uses a cross-service fallback strategy:
+//   - StartedAt:   MAL date if set → keep AniList date if set → set now() only on ep1
+//   - CompletedAt: MAL date if set → keep AniList date if set → set now() on completion
+//
+// This ensures that adding AniList after MAL (or vice versa) will always backfill
+// missing dates from whichever service already has them, without overwriting dates
+// that are present on both sides.
+func (s *service) buildAnilistParams(anilistID int, anime *domain.AnimeUpdate, anilistDates *anilistauth.AnilistEntryDates) anilistauth.AnilistUpdateParams {
+	details := anime.ListDetails
+	ep := anime.EpisodeNum
+
+	params := anilistauth.AnilistUpdateParams{
+		AnilistID: anilistID,
+		Progress:  ep,
+	}
+
+	isCompleted := details.TotalEpisodeNum > 0 && ep >= details.TotalEpisodeNum
+	isFirstEp := ep == 1 && details.WatchedNum == 0
+
+	// Resolve StartedAt:
+	// 1) MAL has a date → use it (backfills AniList if missing)
+	// 2) AniList already has a date → pass nil (leave it untouched)
+	// 3) Neither has a date and it's ep1 → set now()
+	// 4) Neither has a date and ep > 1 → pass nil (no date to set)
+	var startedAt *time.Time
+	if details.MALStartDate != "" {
+		if t, err := time.Parse("2006-01-02", details.MALStartDate); err == nil {
+			startedAt = &t
+		}
+	} else if anilistDates.StartedAt == nil && isFirstEp {
+		now := time.Now()
+		startedAt = &now
+	}
+
+	// Resolve CompletedAt (same cross-fallback logic)
+	var completedAt *time.Time
+	if details.MALFinishDate != "" {
+		if t, err := time.Parse("2006-01-02", details.MALFinishDate); err == nil {
+			completedAt = &t
+		}
+	} else if anilistDates.CompletedAt == nil && isCompleted {
+		now := time.Now()
+		completedAt = &now
+	}
+
+	switch {
+	case details.Status == "completed" && !isCompleted:
+		// Already completed before — now rewatching
+		params.Status = anilistauth.AnilistStatusRepeating
+		params.Repeat = details.RewatchNum
+	case isCompleted:
+		params.Status = anilistauth.AnilistStatusCompleted
+		params.CompletedAt = completedAt
+		params.StartedAt = startedAt
+	default:
+		params.Status = anilistauth.AnilistStatusCurrent
+		params.StartedAt = startedAt
+	}
+
+	return params
+}
+
+// resolveAniListID queries the AniList GraphQL API to find the AniList ID for a given MAL ID.
+func (s *service) resolveAniListID(ctx context.Context, malID int) (int, error) {
+	accessToken, err := s.anilistAuthService.GetAccessToken(ctx)
+	if err != nil {
+		return 0, errors.Wrap(err, "anilist not configured or token invalid")
+	}
+
+	query := `query ($malId: Int) { Media(idMal: $malId, type: ANIME) { id } }`
+	variables := map[string]interface{}{"malId": malID}
+
+	body, err := json.Marshal(map[string]interface{}{"query": query, "variables": variables})
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to marshal graphql request")
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, domain.AnilistGraphQLURL, bytes.NewReader(body))
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to create request")
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Authorization", "Bearer "+accessToken)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to execute request")
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to read response")
+	}
+
+	var result struct {
+		Data struct {
+			Media struct {
+				ID int `json:"id"`
+			} `json:"Media"`
+		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return 0, errors.Wrap(err, "failed to parse response")
+	}
+	if len(result.Errors) > 0 {
+		return 0, errors.Errorf("anilist graphql error: %s", result.Errors[0].Message)
+	}
+	if result.Data.Media.ID == 0 {
+		return 0, errors.Errorf("anilist: no media found for MAL ID %d", malID)
+	}
+	return result.Data.Media.ID, nil
+}
+
