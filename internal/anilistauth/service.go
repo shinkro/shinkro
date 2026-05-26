@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -72,17 +73,25 @@ func NewService(config *domain.Config, log zerolog.Logger, repo domain.AnilistAu
 	}
 }
 
+func (s *service) deriveIV(baseIV []byte, label string) []byte {
+	h := sha256.New()
+	h.Write(baseIV)
+	h.Write([]byte(label))
+	sum := h.Sum(nil)
+	return sum[:12]
+}
+
 // Store encrypts credentials before persisting them to the database.
 func (s *service) Store(ctx context.Context, aa *domain.AnilistAuth) error {
-	et, err := s.encrypt(aa.AccessToken, aa.TokenIV)
+	et, err := s.encrypt(aa.AccessToken, s.deriveIV(aa.TokenIV, "access_token"))
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt access token")
 	}
-	ecid, err := s.encrypt([]byte(aa.Config.ClientID), aa.TokenIV)
+	ecid, err := s.encrypt([]byte(aa.Config.ClientID), s.deriveIV(aa.TokenIV, "client_id"))
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt client id")
 	}
-	ecs, err := s.encrypt([]byte(aa.Config.ClientSecret), aa.TokenIV)
+	ecs, err := s.encrypt([]byte(aa.Config.ClientSecret), s.deriveIV(aa.TokenIV, "client_secret"))
 	if err != nil {
 		return errors.Wrap(err, "failed to encrypt client secret")
 	}
@@ -106,11 +115,11 @@ func (s *service) GetDecrypted(ctx context.Context) (*domain.AnilistAuth, error)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get credentials from database")
 	}
-	cid, err := s.decrypt([]byte(aa.Config.ClientID), aa.TokenIV)
+	cid, err := s.decrypt([]byte(aa.Config.ClientID), s.deriveIV(aa.TokenIV, "client_id"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decrypt client id")
 	}
-	cs, err := s.decrypt([]byte(aa.Config.ClientSecret), aa.TokenIV)
+	cs, err := s.decrypt([]byte(aa.Config.ClientSecret), s.deriveIV(aa.TokenIV, "client_secret"))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to decrypt client secret")
 	}
@@ -129,7 +138,7 @@ func (s *service) GetAccessToken(ctx context.Context) (string, error) {
 	}
 
 	token := &oauth2.Token{}
-	dt, err := s.decrypt(aa.AccessToken, aa.TokenIV)
+	dt, err := s.decrypt(aa.AccessToken, s.deriveIV(aa.TokenIV, "access_token"))
 	if err != nil {
 		return "", errors.Wrap(err, "failed to decrypt access token")
 	}
@@ -148,7 +157,7 @@ func (s *service) GetAccessToken(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "failed to re-fetch credentials")
 	}
-	dt, err = s.decrypt(aa.AccessToken, aa.TokenIV)
+	dt, err = s.decrypt(aa.AccessToken, s.deriveIV(aa.TokenIV, "access_token"))
 	if err != nil {
 		return "", errors.Wrap(err, "failed to decrypt access token on recheck")
 	}

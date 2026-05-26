@@ -312,7 +312,10 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		return 0, false
 	}
 
-	anilistID, err := s.resolveAniListID(ctx, anime.MALId)
+	syncCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
+
+	anilistID, err := s.resolveAniListID(syncCtx, anime.MALId)
 	if err != nil {
 		s.log.Debug().Err(err).Int("malID", anime.MALId).Msg("AniList: could not resolve AniList ID, skipping sync")
 		s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
@@ -325,13 +328,13 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 	}
 
 	if isScrobble {
-		anilistDates, err := s.anilistAuthService.GetAnimeEntry(ctx, anilistID)
+		anilistDates, err := s.anilistAuthService.GetAnimeEntry(syncCtx, anilistID)
 		if err != nil {
 			s.log.Debug().Err(err).Int("anilistID", anilistID).Msg("AniList: could not fetch existing entry dates, proceeding without them")
 			anilistDates = &anilistauth.AnilistEntryDates{}
 		}
 		params := s.buildAnilistParams(anilistID, anime, anilistDates)
-		if err := s.anilistAuthService.UpdateAnimeEntry(ctx, params); err != nil {
+		if err := s.anilistAuthService.UpdateAnimeEntry(syncCtx, params); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update entry")
 			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
 				AnimeUpdate:  anime,
@@ -351,7 +354,7 @@ func (s *service) syncToAniList(ctx context.Context, anime *domain.AnimeUpdate, 
 		if anime.Plex != nil {
 			rating = float64(anime.Plex.Rating)
 		}
-		if err := s.anilistAuthService.UpdateAnimeScore(ctx, anilistID, rating); err != nil {
+		if err := s.anilistAuthService.UpdateAnimeScore(syncCtx, anilistID, rating); err != nil {
 			s.log.Warn().Err(err).Int("anilistID", anilistID).Msg("AniList: failed to update score")
 			s.bus.Publish(domain.EventAnilistSyncFailed, &domain.AnilistSyncFailedEvent{
 				AnimeUpdate:  anime,
