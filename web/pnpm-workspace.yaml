@@ -1,0 +1,6 @@
+overrides:
+  "react-ridge-state>react": "$react"
+  "source-map": "^0.7.4"
+
+ignoredBuiltDependencies:
+  - esbuild
