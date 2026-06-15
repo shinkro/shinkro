@@ -1,6 +1,6 @@
 overrides:
-  "react-ridge-state>react": "$react"
+  "react-ridge-state>react": "^19.2.4"
   "source-map": "^0.7.4"
 
-ignoredBuiltDependencies:
-  - esbuild
+onlyBuiltDependencies:
+  - "@swc/core"
