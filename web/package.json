@@ -52,14 +52,5 @@
     "vite-plugin-svgr": "^5.2.0",
     "workbox-build": "^7.4.1",
     "workbox-window": "^7.4.1"
-  },
-  "pnpm": {
-    "overrides": {
-      "react-ridge-state>react": "$react",
-      "source-map": "^0.7.4"
-    },
-    "ignoredBuiltDependencies": [
-      "esbuild"
-    ]
   }
 }

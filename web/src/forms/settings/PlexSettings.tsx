@@ -63,8 +63,8 @@ export const PlexSettings = ({
         code: string;
     } | null>(null);
     const isModalOpenRef = useRef(opened);
-    const intervalRef = useRef<NodeJS.Timeout | null>(null);
-    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Servers state and selected server (using Select)
     const [servers, setServers] = useState<PlexServerResponse | null>(null);

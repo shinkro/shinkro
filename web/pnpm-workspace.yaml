@@ -1,0 +1,7 @@
+overrides:
+  "react-ridge-state>react": "^19.2.4"
+  "source-map": "^0.7.4"
+
+allowBuilds:
+  '@swc/core': true
+  esbuild: true
