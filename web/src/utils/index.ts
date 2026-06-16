@@ -36,7 +36,7 @@ export function routerBasePath() {
 
 // get sseBaseUrl for SSE
 export function sseBaseUrl() {
-    if (process.env.NODE_ENV === "development") return "http://localhost:7012/";
+    if (import.meta.env.DEV) return "http://localhost:7012/";
 
     return `${window.location.origin}${baseUrl()}`;
 }

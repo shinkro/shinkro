@@ -87,7 +87,7 @@ export const Api = () => {
                     {/* Header row - hidden on mobile */}
                     <Grid
                         visibleFrom="sm"
-                        gutter="md"
+                        gap="md"
                         mb="xs"
                         pb="xs"
                         style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}
@@ -150,7 +150,7 @@ interface KeyRowProps {
 const KeyRow = ({name, value, onDelete}: KeyRowProps) => {
     return (
         <>
-            <Grid gutter="md" align="center" py="sm" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
+            <Grid gap="md" align="center" py="sm" style={{ borderBottom: '1px solid var(--mantine-color-gray-2)' }}>
                 <Grid.Col span={{ base: 12, sm: 3 }}>
                     <Group justify="space-between" wrap="nowrap">
                         <Text c="primary" tt="uppercase" fw={700} truncate style={{ flex: 1 }}>
