@@ -84,9 +84,11 @@ func (s *service) handleEvent(ctx context.Context, anime *domain.AnimeUpdate, is
 		return s.updateAndStore(ctx, anime, isScrobble)
 	}
 
-	// AniDB IDs are per-series/season; prefer direct DB lookup over TVDB conversion,
-	// which loses specificity when multiple series share a TVDB ID.
-	if anime.SourceDB == domain.AniDB {
+	// For season 1, the AniDB ID identifies the series, so a direct DB lookup is exact
+	// and avoids TVDB conversion collapsing multiple series onto a shared TVDB ID.
+	// For season > 1 the season number is the differentiator, so the community map
+	// (keyed by TVDB ID + season) must be used instead.
+	if anime.SourceDB == domain.AniDB && anime.SeasonNum == 1 {
 		req := &domain.GetAnimeRequest{IDtype: anime.SourceDB, Id: anime.SourceId}
 		if animeFromDB, err := s.animeService.GetByID(ctx, req); err == nil && animeFromDB.MALId > 0 {
 			anime.MALId = animeFromDB.MALId
