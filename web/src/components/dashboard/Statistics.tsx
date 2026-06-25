@@ -58,7 +58,7 @@ export const StatisticsSection = ({
                     {animeUpdateCount?.count?.toLocaleString() || 0}
                 </Text>
                 <Text size="sm" c="dimmed" mt="xs" ta="center">
-                    Successful MAL Updates
+                    Successful Anime Updates
                 </Text>
             </Card>
         </Group>

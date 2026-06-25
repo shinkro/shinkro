@@ -58,6 +58,9 @@ type NotificationPayload struct {
 	FinishDate      string
 	AnimeStatus     string
 	Score           int
+	AnilistID       int
+	UpdatedServices []string // e.g. ["MyAnimeList"], ["AniList"], ["MyAnimeList", "AniList"]
+	AnilistSyncError string  // non-empty if AniList sync failed (but MAL succeeded)
 	PlexEvent       PlexEvent
 	PlexSource      PlexPayloadSource
 	Timestamp       time.Time
