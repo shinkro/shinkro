@@ -3,6 +3,9 @@ package anime
 import (
 	"context"
 	"errors"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/shinkro/shinkro/internal/domain"
@@ -12,10 +15,11 @@ import (
 )
 
 type mockAnimeRepo struct {
-	anime       *domain.Anime
-	animeList   []*domain.Anime
-	storeErr    error
-	getByIDErr  error
+	anime        *domain.Anime
+	animeList    []*domain.Anime
+	storeErr     error
+	getByIDErr   error
+	replaceCalls int
 }
 
 func (m *mockAnimeRepo) GetByID(ctx context.Context, req *domain.GetAnimeRequest) (*domain.Anime, error) {
@@ -31,6 +35,51 @@ func (m *mockAnimeRepo) StoreMultiple(anime []*domain.Anime) error {
 	}
 	m.animeList = anime
 	return nil
+}
+
+func (m *mockAnimeRepo) ReplaceAll(ctx context.Context, anime []*domain.Anime) error {
+	m.replaceCalls++
+	return m.StoreMultiple(anime)
+}
+
+type snapshotTransport func(*http.Request) (*http.Response, error)
+
+func (f snapshotTransport) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+func TestUpdateAnimeReplacesOnlyAValidDownloadedSnapshot(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		status int
+		body   string
+		valid  bool
+	}{
+		{"valid", 200, `[{"malid":1,"title":"Live"}]`, true},
+		{"server error with JSON array", 503, `[{"malid":1,"title":"Live"}]`, false},
+		{"empty", 200, `[]`, false},
+		{"null", 200, `null`, false},
+		{"null entry", 200, `[null]`, false},
+		{"invalid ID", 200, `[{"malid":0,"title":"Invalid"}]`, false},
+		{"missing title", 200, `[{"malid":1}]`, false},
+		{"truncated JSON", 200, `[{"malid":1`, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockAnimeRepo{animeList: []*domain.Anime{{MALId: 9, MainTitle: "Previous"}}}
+			s := NewService(zerolog.Nop(), repo).(*service)
+			s.httpClient.Transport = snapshotTransport(func(req *http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: tt.status, Body: io.NopCloser(strings.NewReader(tt.body)), Header: make(http.Header)}, nil
+			})
+			err := s.UpdateAnime(context.Background())
+			if tt.valid {
+				assert.NoError(t, err)
+				assert.Equal(t, 1, repo.replaceCalls)
+				assert.Equal(t, 1, repo.animeList[0].MALId)
+			} else {
+				assert.Error(t, err)
+				assert.Zero(t, repo.replaceCalls)
+				assert.Equal(t, 9, repo.animeList[0].MALId)
+			}
+		})
+	}
 }
 
 func TestService_GetByID(t *testing.T) {
@@ -174,4 +223,3 @@ func TestService_UpdateAnime_ContextCancellation(t *testing.T) {
 	// The important thing is it handles the context correctly
 	assert.Error(t, err)
 }
-

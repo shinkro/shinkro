@@ -7,6 +7,7 @@ import (
 type AnimeRepo interface {
 	GetByID(ctx context.Context, req *GetAnimeRequest) (*Anime, error)
 	StoreMultiple(anime []*Anime) error
+	ReplaceAll(ctx context.Context, anime []*Anime) error
 }
 
 type Anime struct {

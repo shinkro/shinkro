@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"strings"
 
 	sq "github.com/Masterminds/squirrel"
 	"github.com/pkg/errors"
@@ -135,4 +136,39 @@ func (repo *AnimeRepo) StoreMultiple(anime []*domain.Anime) error {
 	}
 
 	return nil
+}
+
+// ReplaceAll installs a complete runtime snapshot. Absent rows must disappear:
+// they may be unavailable on MAL or excluded by canonical AniDB selection.
+func (repo *AnimeRepo) ReplaceAll(ctx context.Context, anime []*domain.Anime) error {
+	if len(anime) == 0 {
+		return errors.New("refusing an empty anime snapshot")
+	}
+	for _, row := range anime {
+		if row == nil || row.MALId <= 0 || strings.TrimSpace(row.MainTitle) == "" {
+			return errors.New("invalid anime snapshot entry")
+		}
+	}
+	tx, err := repo.db.handler.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.ExecContext(ctx, "DELETE FROM anime"); err != nil {
+		return err
+	}
+	statement, err := tx.PrepareContext(ctx, `REPLACE INTO anime
+		(mal_id, title, en_title, anidb_id, tvdb_id, tmdb_id, type, releaseDate)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+	if err != nil {
+		return err
+	}
+	defer statement.Close()
+	for _, row := range anime {
+		if _, err := statement.ExecContext(ctx, row.MALId, row.MainTitle, row.EnglishTitle, row.AniDBId,
+			row.TVDBId, row.TMDBId, row.AnimeType, row.ReleaseDate); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
