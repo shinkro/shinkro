@@ -111,7 +111,7 @@ export const AddNotification = ({opened, onClose, defaultValues}: AddNotificatio
 
     const notificationEvents = [
         { value: "APP_UPDATE_AVAILABLE", label: "App Update Available" },
-        { value: "SUCCESS", label: "MAL Update Successful" },
+        { value: "SUCCESS", label: "Anime Update Successful" },
         { value: "PLEX_PROCESSING_ERROR", label: "Plex Processing Error" },
         { value: "ANIME_UPDATE_ERROR", label: "Anime Update Error" },
         { value: "TEST", label: "Test" },

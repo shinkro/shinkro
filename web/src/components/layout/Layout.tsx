@@ -6,7 +6,7 @@ import {MdDarkMode, MdLightMode} from "react-icons/md";
 import {FaDiscord, FaGithub, FaUser} from "react-icons/fa";
 import {GrHelpBook} from "react-icons/gr";
 import {BiLogOut} from "react-icons/bi";
-import {SiMyanimelist, SiPlex} from "react-icons/si";
+import {SiMyanimelist, SiPlex, SiAnilist} from "react-icons/si";
 import {FaSlidersH} from "react-icons/fa";
 import {useMutation, useQuery} from "@tanstack/react-query";
 import {Link, Outlet, useNavigate, useRouterState} from "@tanstack/react-router";
@@ -88,6 +88,7 @@ export const Layout = () => {
         { label: 'General', icon: FaSlidersH, link: '/settings' },
         { label: 'Plex', icon: SiPlex, link: '/settings/plex' },
         { label: 'MyAnimeList', icon: SiMyanimelist, link: '/settings/mal' },
+        { label: 'AniList', icon: SiAnilist, link: '/settings/anilist' },
     ];
 
 
@@ -221,7 +222,7 @@ export const Layout = () => {
                                                         <Text fw={500} size="sm">{setting.label}</Text>
                                                     </Group>
                                                 }
-                                                active={setting.label === 'General' ? pathname.startsWith('/settings') && !pathname.startsWith('/settings/plex') && !pathname.startsWith('/settings/mal') : pathname === setting.link}
+                                                active={setting.label === 'General' ? pathname.startsWith('/settings') && !pathname.startsWith('/settings/plex') && !pathname.startsWith('/settings/mal') && !pathname.startsWith('/settings/anilist') : pathname === setting.link}
                                                 variant="light"
                                                 color="blue"
                                             />

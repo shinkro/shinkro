@@ -15,6 +15,11 @@ export const MalAuthKeys = {
     config: () => [...MalAuthKeys.all, "config"] as const,
 }
 
+export const AnilistAuthKeys = {
+    all: ["anilist_auth"] as const,
+    config: () => [...AnilistAuthKeys.all, "config"] as const,
+}
+
 export const ApiKeys = {
     all: ["api_keys"] as const,
     lists: () => [...ApiKeys.all, "list"] as const,

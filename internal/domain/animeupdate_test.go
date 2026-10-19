@@ -229,6 +229,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 		watchedNum    int
 		title         string
 		pictureURL    string
+		startDate     string
+		finishDate    string
 		expected      ListDetails
 	}{
 		{
@@ -239,6 +241,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 			watchedNum:    5,
 			title:         "Test Anime",
 			pictureURL:    "https://example.com/image.jpg",
+			startDate:     "2023-01-01",
+			finishDate:    "",
 			expected: ListDetails{
 				Status:          mal.AnimeStatusWatching,
 				RewatchNum:      0,
@@ -246,6 +250,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 				WatchedNum:      5,
 				Title:           "Test Anime",
 				PictureURL:      "https://example.com/image.jpg",
+				MALStartDate:    "2023-01-01",
+				MALFinishDate:   "",
 			},
 		},
 		{
@@ -256,6 +262,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 			watchedNum:    24,
 			title:         "Completed Anime",
 			pictureURL:    "https://example.com/completed.jpg",
+			startDate:     "2023-01-01",
+			finishDate:    "2023-01-10",
 			expected: ListDetails{
 				Status:          mal.AnimeStatusCompleted,
 				RewatchNum:      1,
@@ -263,6 +271,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 				WatchedNum:      24,
 				Title:           "Completed Anime",
 				PictureURL:      "https://example.com/completed.jpg",
+				MALStartDate:    "2023-01-01",
+				MALFinishDate:   "2023-01-10",
 			},
 		},
 		{
@@ -273,6 +283,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 			watchedNum:    50,
 			title:         "Ongoing Anime",
 			pictureURL:    "",
+			startDate:     "",
+			finishDate:    "",
 			expected: ListDetails{
 				Status:          mal.AnimeStatusWatching,
 				RewatchNum:      0,
@@ -280,6 +292,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 				WatchedNum:      50,
 				Title:           "Ongoing Anime",
 				PictureURL:      "",
+				MALStartDate:    "",
+				MALFinishDate:   "",
 			},
 		},
 	}
@@ -293,6 +307,8 @@ func TestBuildListDetailsFromMALResponse(t *testing.T) {
 				tt.watchedNum,
 				tt.title,
 				tt.pictureURL,
+				tt.startDate,
+				tt.finishDate,
 			)
 			assert.Equal(t, tt.expected, result)
 		})

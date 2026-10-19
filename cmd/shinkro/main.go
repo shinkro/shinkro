@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/shinkro/shinkro/internal/anime"
+	"github.com/shinkro/shinkro/internal/anilistauth"
 	"github.com/shinkro/shinkro/internal/animeupdate"
 	"github.com/shinkro/shinkro/internal/api"
 	"github.com/shinkro/shinkro/internal/auth"
@@ -119,6 +120,7 @@ func main() {
 			plexRepo         = database.NewPlexRepo(log, db)
 			plexSettingsRepo = database.NewPlexSettingsRepo(log, db)
 			malauthRepo      = database.NewMalAuthRepo(log, db)
+			anilistAuthRepo  = database.NewAnilistAuthRepo(log, db)
 			userRepo         = database.NewUserRepo(log, db)
 			apiRepo          = database.NewAPIRepo(log, db)
 			mappingRepo      = database.NewMappingRepo(log, db)
@@ -129,10 +131,11 @@ func main() {
 		var (
 			animeService        = anime.NewService(log, animeRepo)
 			malauthService      = malauth.NewService(cfg.Config, log, malauthRepo)
+			anilistAuthService  = anilistauth.NewService(cfg.Config, log, anilistAuthRepo)
 			mapService          = mapping.NewService(log, mappingRepo)
 			plexSettingsService = plexsettings.NewService(cfg.Config, log, plexSettingsRepo)
 			notificationService = notification.NewService(log, notificationRepo)
-			animeUpdateService  = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, bus)
+			animeUpdateService  = animeupdate.NewService(log, animeUpdateRepo, animeService, mapService, malauthService, anilistAuthService, bus)
 			plexService         = plex.NewService(log, plexSettingsService, plexRepo, animeService, mapService, malauthService, animeUpdateService, bus)
 			userService         = user.NewService(userRepo, log)
 			authService         = auth.NewService(log, userService)
@@ -162,6 +165,7 @@ func main() {
 				plexService,
 				plexSettingsService,
 				malauthService,
+				anilistAuthService,
 				apiService,
 				authService,
 				mapService,

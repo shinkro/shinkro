@@ -30,6 +30,7 @@ type Server struct {
 	plexService         plexService
 	plexsettingsService plexsettingsService
 	malauthService      malauthService
+	anilistAuthService  anilistAuthService
 	apiService          apikeyService
 	authService         authService
 	mappingService      mappingService
@@ -39,7 +40,7 @@ type Server struct {
 	sse                 *sse.Server
 }
 
-func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService, animeUpdateSvc animeupdateService, sseServer *sse.Server) Server {
+func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, version string, commit string, date string, plexSvc plexService, plexsettingsSvc plexsettingsService, malauthSvc malauthService, anilistAuthSvc anilistAuthService, apiSvc apikeyService, authSvc authService, mappingSvc mappingService, fsSvc filesystemService, notificationSvc notificationService, animeUpdateSvc animeupdateService, sseServer *sse.Server) Server {
 	return Server{
 		log:                 log.With().Str("module", "http").Logger(),
 		config:              config,
@@ -51,6 +52,7 @@ func NewServer(log zerolog.Logger, config *config.AppConfig, db *database.DB, ve
 		plexService:         plexSvc,
 		plexsettingsService: plexsettingsSvc,
 		malauthService:      malauthSvc,
+		anilistAuthService:  anilistAuthSvc,
 		apiService:          apiSvc,
 		authService:         authSvc,
 		mappingService:      mappingSvc,
@@ -116,6 +118,7 @@ func (s Server) Handler() http.Handler {
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)
 		r.Route("/malauth", newmalauthHandler(encoder, s.malauthService, s.cookieStore).Routes)
+		r.Route("/anilistauth", newAnilistAuthHandler(encoder, s.anilistAuthService, s.cookieStore, s.config.Config.Port).Routes)
 		r.Route("/keys", newAPIKeyHandler(encoder, s.apiService).Routes)
 		r.Route("/mapping", newMappingHandler(encoder, s.mappingService).Routes)
 		r.Route("/fs", newFilesystemHandler(encoder, s.fsService).Routes)

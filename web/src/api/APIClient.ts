@@ -9,6 +9,7 @@ import {
 } from "@app/types/Plex";
 import {AuthContext} from "@utils/Context";
 import {MalAuth, StartAuthResponse} from "@app/types/MalAuth";
+import {AnilistAuth, StartAnilistAuthResponse} from "@app/types/AnilistAuth";
 import {Mapping, ValidateMap} from "@app/types/Mapping";
 import {FileSystem, LogFileResponse} from "@app/types/FileSystem";
 import { RecentAnimeItem, FindAnimeUpdatesResponse } from "@app/types/Anime";
@@ -431,6 +432,30 @@ export const APIClient = {
             new EventSource(`${sseBaseUrl()}api/events?stream=logs`, {
                 withCredentials: true,
             }),
+    },
+    anilistauth: {
+        start: (aa: AnilistAuth) =>
+            appClient.Post<StartAnilistAuthResponse>("api/anilistauth", {
+                queryString: {
+                    clientID: aa.clientID,
+                    clientSecret: aa.clientSecret,
+                    redirectURL: aa.redirectURL,
+                },
+            }),
+
+        get: () =>
+            appClient.Get<AnilistAuth>("api/anilistauth"),
+
+        delete: () =>
+            appClient.Delete("api/anilistauth"),
+
+        callback: (code: string, state: string) =>
+            appClient.Get("api/anilistauth/callback", {
+                queryString: { code, state },
+            }),
+
+        test: () =>
+            appClient.Get("api/anilistauth/test"),
     },
     notifications: {
         getAll: () => appClient.Get<ServiceNotification[]>("api/notification"),
