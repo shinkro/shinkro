@@ -319,6 +319,7 @@ export const PlexPayloads = () => {
                     const plexId = row.original.plex.id;
                     return (
                         <ActionsCell
+                            inspectId={plexId}
                             onView={() => {
                                 setSelectedPayload(row.original);
                                 open();

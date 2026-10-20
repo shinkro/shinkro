@@ -8,13 +8,12 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/asaskevich/EventBus"
 	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"github.com/shinkro/shinkro/internal/anime"
 	"github.com/shinkro/shinkro/internal/animeupdate"
 	"github.com/shinkro/shinkro/internal/api"
@@ -31,6 +30,8 @@ import (
 	"github.com/shinkro/shinkro/internal/testdata"
 	"github.com/shinkro/shinkro/internal/user"
 	"github.com/shinkro/shinkro/pkg/sse"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // setupTestHTTPServerForPlex creates a test HTTP server with all services for Plex webhook testing
@@ -208,8 +209,7 @@ func TestPlexWebhookIntegration_Flow(t *testing.T) {
 		// Verify response
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-		// Wait a bit for async processing
-		time.Sleep(200 * time.Millisecond)
+		// Payload persistence and Plex extraction finish before the HTTP response.
 
 		// Verify Plex payload was stored in database
 		plexRepo := database.NewPlexRepo(log, db)
@@ -277,31 +277,49 @@ func TestPlexWebhookIntegration_EventFlow(t *testing.T) {
 	t.Run("plex webhook triggers event flow", func(t *testing.T) {
 		// Track events
 		eventsReceived := make(map[string]bool)
+		var eventMu sync.Mutex
+		completed := make(chan struct{}, 1)
 		var plexProcessedEvent *domain.PlexProcessedSuccessEvent
 		var animeUpdateSuccessEvent *domain.AnimeUpdateSuccessEvent
 		var animeUpdateFailedEvent *domain.AnimeUpdateFailedEvent
 
 		// Subscribe to events
 		err := (*bus).Subscribe(domain.EventPlexProcessedSuccess, func(event *domain.PlexProcessedSuccessEvent) {
+			eventMu.Lock()
+			defer eventMu.Unlock()
 			eventsReceived[domain.EventPlexProcessedSuccess] = true
 			plexProcessedEvent = event
 		})
 		require.NoError(t, err)
 
 		err = (*bus).Subscribe(domain.EventPlexProcessedError, func(event *domain.PlexProcessedErrorEvent) {
+			eventMu.Lock()
+			defer eventMu.Unlock()
 			eventsReceived[domain.EventPlexProcessedError] = true
 		})
 		require.NoError(t, err)
 
 		err = (*bus).Subscribe(domain.EventAnimeUpdateSuccess, func(event *domain.AnimeUpdateSuccessEvent) {
+			eventMu.Lock()
+			defer eventMu.Unlock()
 			eventsReceived[domain.EventAnimeUpdateSuccess] = true
 			animeUpdateSuccessEvent = event
+			select {
+			case completed <- struct{}{}:
+			default:
+			}
 		})
 		require.NoError(t, err)
 
 		err = (*bus).Subscribe(domain.EventAnimeUpdateFailed, func(event *domain.AnimeUpdateFailedEvent) {
+			eventMu.Lock()
+			defer eventMu.Unlock()
 			eventsReceived[domain.EventAnimeUpdateFailed] = true
 			animeUpdateFailedEvent = event
+			select {
+			case completed <- struct{}{}:
+			default:
+			}
 		})
 		require.NoError(t, err)
 
@@ -342,9 +360,15 @@ func TestPlexWebhookIntegration_EventFlow(t *testing.T) {
 		// Verify response
 		assert.Equal(t, http.StatusCreated, resp.StatusCode)
 
-		// Wait for async event processing
-		time.Sleep(500 * time.Millisecond)
+		// Wait for the MAL compatibility path using a completion signal.
 
+		select {
+		case <-completed:
+		case <-time.After(5 * time.Second):
+			t.Fatal("MAL processing did not complete")
+		}
+		eventMu.Lock()
+		defer eventMu.Unlock()
 		// Verify Plex processed event was published
 		assert.True(t,
 			eventsReceived[domain.EventPlexProcessedSuccess] || eventsReceived[domain.EventPlexProcessedError],

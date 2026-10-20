@@ -449,6 +449,6 @@ export const APIClient = {
             }),
     },
     updates: {
-        getLatestRelease: () => appClient.Get<any>("api/updates/latest"),
+        getLatestRelease: () => appClient.Get<{tag_name:string}>("api/updates/latest"),
     },
 };

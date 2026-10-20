@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
@@ -79,7 +80,7 @@ func (s *service) loadMap(ctx context.Context) (*domain.AnimeMap, error) {
 
 	shouldLoadLocalTVDB, shouldLoadLocalTMDB := settings.ShouldLoadLocal()
 	localTVDBExists, localTMDBExists := s.checkLocalMapsExist(settings)
-	
+
 	// Load local maps if they exist and should be loaded
 	if (shouldLoadLocalTVDB && localTVDBExists) || (shouldLoadLocalTMDB && localTMDBExists) {
 		if err := s.loadLocalMaps(settings, animeMap, shouldLoadLocalTVDB && localTVDBExists, shouldLoadLocalTMDB && localTMDBExists); err != nil {
@@ -90,7 +91,7 @@ func (s *service) loadMap(ctx context.Context) (*domain.AnimeMap, error) {
 	// Load community maps for any that weren't loaded locally
 	needsTVDB := !(shouldLoadLocalTVDB && localTVDBExists)
 	needsTMDB := !(shouldLoadLocalTMDB && localTMDBExists)
-	
+
 	if needsTVDB || needsTMDB {
 		if err := s.loadCommunityMaps(ctx, animeMap, needsTVDB, needsTMDB); err != nil {
 			return nil, err
@@ -174,12 +175,12 @@ func (s *service) checkMap(m *domain.AnimeMap, anime *domain.AnimeUpdate) (*doma
 		if inMap, ep := m.AnimeTVShows.CheckMap(anime.SourceId, anime.SeasonNum, anime.EpisodeNum); inMap {
 			s.log.Debug().Msg("found anime episode in map")
 			return &domain.AnimeMapDetails{
-				Malid:           ep.Malid,
-				Start:           ep.Start,
-				UseMapping:      ep.UseMapping,
-				MappingType:     ep.MappingType,
+				Malid:            ep.Malid,
+				Start:            ep.Start,
+				UseMapping:       ep.UseMapping,
+				MappingType:      ep.MappingType,
 				ExplicitEpisodes: ep.ExplicitEpisodes,
-				SkipMalEpisodes: ep.SkipMalEpisodes,
+				SkipMalEpisodes:  ep.SkipMalEpisodes,
 			}, true
 		}
 	}
@@ -261,7 +262,7 @@ func (s *service) loadLocalMaps(settings *domain.MapSettings, animeMap *domain.A
 
 // loadYamlFromURL fetches YAML data from a URL and unmarshals it
 func (s *service) loadYamlFromURL(ctx context.Context, url string, target interface{}) error {
-	client := &http.Client{Transport: sharedhttp.Transport}
+	client := &http.Client{Transport: sharedhttp.Transport, Timeout: 30 * time.Second}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return err
@@ -274,13 +275,30 @@ func (s *service) loadYamlFromURL(ctx context.Context, url string, target interf
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("mapping provider returned HTTP %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, (32<<20)+1))
 	if err != nil {
 		return err
 	}
 
+	if len(body) > 32<<20 {
+		return errors.New("mapping download exceeds the size limit")
+	}
 	if err := yaml.Unmarshal(body, target); err != nil {
 		return err
+	}
+
+	switch m := target.(type) {
+	case *domain.AnimeTVShows:
+		if len(m.Anime) == 0 {
+			return errors.New("community TVDB map is empty")
+		}
+	case *domain.AnimeMovies:
+		if len(m.AnimeMovie) == 0 {
+			return errors.New("community TMDB map is empty")
+		}
 	}
 
 	return nil
@@ -308,7 +326,7 @@ func (s *service) loadYamlFromFile(filePath string, target interface{}) error {
 
 // fileExists checks if a file exists
 func (s *service) fileExists(path string) bool {
-	_, err := os.Open(path)
+	_, err := os.Stat(path)
 	return err == nil
 }
 
@@ -336,3 +354,15 @@ func toJSONCompatible(v interface{}) interface{} {
 		return v
 	}
 }
+
+// Snapshot returns an immutable map reference. Refresh publishes only a fully
+// loaded replacement, leaving the last known-good snapshot intact on failure.
+func (s *service) Snapshot(ctx context.Context) (*domain.AnimeMap, *domain.MapSettings, error) {
+	m, err := s.getCachedMap(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
+	settings, err := s.repo.Get(ctx)
+	return m, settings, err
+}
+func (s *service) Refresh(ctx context.Context) error { _, err := s.reloadMap(ctx); return err }

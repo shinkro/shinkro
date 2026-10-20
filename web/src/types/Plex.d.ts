@@ -125,7 +125,7 @@ export interface PlexPayloadMinimal {
     errorType?: PlexErrorType;
     errorMsg?: string;
     // Allow additional fields from backend without strict typing
-    [key: string]: any;
+    [key: string]: unknown;
 }
 
 export type PlexErrorType = 

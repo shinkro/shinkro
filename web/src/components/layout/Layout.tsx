@@ -1,5 +1,6 @@
 import {ActionIcon, AppShell, Code, Flex, Group, Image, Menu, NavLink, rem, Title, Burger, Badge} from "@mantine/core";
 import {useDisclosure} from "@mantine/hooks";
+import {DevBanner} from "@components/sync/shared";
 import Logo from "@app/logo.svg";
 import {displayNotification} from "@components/notifications";
 import {MdDarkMode, MdLightMode} from "react-icons/md";
@@ -262,6 +263,7 @@ export const Layout = () => {
             </AppShell.Navbar>
             <AppShell.Main>
                 <div className={classes.variableCenter}>
+                    <DevBanner developmentBuild={!!isDevOrNightly}/>
                     <Outlet/>
                 </div>
             </AppShell.Main>

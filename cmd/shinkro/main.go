@@ -32,6 +32,7 @@ import (
 	"github.com/shinkro/shinkro/internal/plex"
 	"github.com/shinkro/shinkro/internal/plexsettings"
 	"github.com/shinkro/shinkro/internal/server"
+	"github.com/shinkro/shinkro/internal/syncinspector"
 	"github.com/shinkro/shinkro/internal/user"
 	"github.com/shinkro/shinkro/pkg/sse"
 )
@@ -140,8 +141,27 @@ func main() {
 			fsService           = filesystem.NewService(cfg.Config, log)
 		)
 
+		inspector := syncinspector.New(db.SQL(), mapService.(syncinspector.Maps), syncinspector.MALAdapter{Client: malauthService.GetMalClient}, cfg.Config.SyncWritesEnabled, animeService.UpdateAnime, animeUpdateService.Store, func(a *domain.AnimeUpdate, success bool) {
+			if success {
+				bus.Publish(domain.EventAnimeUpdateSuccess, &domain.AnimeUpdateSuccessEvent{PlexID: a.PlexId, AnimeUpdate: a, Timestamp: time.Now()})
+			} else {
+				bus.Publish(domain.EventAnimeUpdateFailed, &domain.AnimeUpdateFailedEvent{AnimeUpdate: a, ErrorType: a.ErrorType, ErrorMessage: a.ErrorMessage, Timestamp: time.Now()})
+			}
+		})
+		inspector.SetEligibility(syncinspector.PlexEligibility{Settings: plexSettingsService.Get, Identity: func(ctx context.Context, settings *domain.PlexSettings) (string, error) {
+			client, err := plexSettingsService.GetClient(ctx, settings)
+			if err != nil {
+				return "", err
+			}
+			return client.Identity(ctx)
+		}}.Check)
+		animeupdate.SetExecutor(animeUpdateService, inspector.Enqueue)
+		plex.SetSyncCoordinator(plexService, inspector.Enqueue, inspector.WithDeletion)
+
 		// Register event subscribers
 		events.NewSubscribers(log, bus, notificationService, plexService, animeUpdateService)
+		inspector.Start()
+		defer inspector.Close()
 
 		srv := server.NewServer(log, cfg.Config, animeService, mapService, bus)
 		if err := srv.Start(); err != nil {
@@ -170,6 +190,7 @@ func main() {
 				animeUpdateService,
 				serverEvents,
 			)
+			httpServer = httpServer.WithSyncInspector(inspector)
 			errorChannel <- httpServer.Open()
 		}()
 

@@ -1,3 +1,4 @@
+import {Link} from "@tanstack/react-router";
 import {Anchor, Badge, Card, Group, Stack, Text, Timeline, TimelineItem, Alert, List} from "@mantine/core";
 import {formatDistanceToNow} from "date-fns";
 import {FaExclamationCircle, FaInfoCircle} from "react-icons/fa";
@@ -75,9 +76,9 @@ export function RecentTimeline({timelineItems}: RecentTimelineProps) {
                 const plexSuccess = plex?.success;
                 const animeUpdateStatusValue = animeUpdate?.status;
                 
-                // Determine success/failure: plex must be successful AND anime update must be successful (or not exist)
+                // MAL success requires a recorded successful update. Plex receipt alone is separate.
                 const isSuccess = plexSuccess === true && 
-                                 (animeUpdateStatusValue === "SUCCESS" || animeUpdateStatusValue === undefined);
+                                 animeUpdateStatusValue === "SUCCESS";
                 const isFailed = plexSuccess === false || animeUpdateStatusValue === "FAILED";
                 
                 const score = animeUpdate?.listStatus?.score;
@@ -94,6 +95,7 @@ export function RecentTimeline({timelineItems}: RecentTimelineProps) {
                         <Card shadow="xs" padding="sm" radius="md" withBorder>
                             <Group>
                                 <Text fw={700}>{animeTitle}</Text>
+                                <Link to="/sync/events/$eventId" params={{eventId:String(plex.id)}}>Inspect sync</Link>
                                 <Text size="xs" c="dimmed">
                                     {plex.timestamp ? formatDistanceToNow(new Date(plex.timestamp), {addSuffix: true}) : "-"}
                                 </Text>
@@ -112,7 +114,7 @@ export function RecentTimeline({timelineItems}: RecentTimelineProps) {
                                 ) : isFailed ? (
                                     <Badge color="red" variant="outline">Failed</Badge>
                                 ) : (
-                                    <Badge color="yellow" variant="outline">Pending</Badge>
+                                    <Badge color="yellow" variant="outline">MAL result not recorded</Badge>
                                 )}
                             </Group>
                             

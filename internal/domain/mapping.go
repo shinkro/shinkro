@@ -246,3 +246,43 @@ func (ms *MapSettings) ShouldLoadLocal() (bool, bool) {
 	return tvdb, tmdb
 }
 
+// ResolveStrict preserves split-cour ordering but refuses equally applicable
+// destinations and undefined explicit episodes instead of guessing.
+func (s *AnimeTVShows) ResolveStrict(tvdbid, season, episode int) (*AnimeMapDetails, string) {
+	candidates := s.findMatchingAnime(tvdbid, season)
+	var selected *AnimeMapDetails
+	best := -1
+	for _, c := range candidates {
+		start := c.Start
+		if start == 0 {
+			start = 1
+		}
+		if !c.UseMapping && episode < start {
+			continue
+		}
+		if c.MappingType == "explicit" {
+			if _, ok := c.ExplicitEpisodes[episode]; !ok {
+				continue
+			}
+		}
+		if start < best {
+			continue
+		}
+		d := &AnimeMapDetails{Malid: c.Malid, Start: c.Start, UseMapping: c.UseMapping, MappingType: c.MappingType, ExplicitEpisodes: c.ExplicitEpisodes, SkipMalEpisodes: c.SkipMalEpisodes}
+		if selected != nil && start == best && (selected.Malid != d.Malid || selected.CalculateEpNum(episode) != d.CalculateEpNum(episode)) {
+			return nil, "AMBIGUOUS_MAPPING"
+		}
+		selected = d
+		best = start
+	}
+	if selected == nil {
+		if len(candidates) > 0 {
+			return nil, "UNDEFINED_EPISODE"
+		}
+		return nil, "MAPPING_NOT_FOUND"
+	}
+	if selected.Malid <= 0 || selected.CalculateEpNum(episode) < 1 {
+		return nil, "INVALID_EPISODE"
+	}
+	return selected, ""
+}

@@ -31,6 +31,8 @@ type Service interface {
 }
 
 type service struct {
+	intake             func(context.Context, *domain.AnimeUpdate, domain.PlexEvent) error
+	deletion           func(context.Context, func() error) error
 	log                zerolog.Logger
 	repo               domain.PlexRepo
 	plexettingsService plexsettings.Service
@@ -118,6 +120,12 @@ func (s *service) ProcessPlex(ctx context.Context, plex *domain.Plex) error {
 		return err
 	}
 
+	if s.intake != nil {
+		if err := s.intake(ctx, a, plex.Event); err != nil {
+			return err
+		}
+	}
+
 	// Publish success event - Plex processing succeeded (metadata extraction worked)
 	// Event subscriber will trigger MAL update asynchronously
 	s.bus.Publish(domain.EventPlexProcessedSuccess, &domain.PlexProcessedSuccessEvent{
@@ -180,7 +188,9 @@ func (s *service) GetPlexHistory(ctx context.Context, limit int) ([]domain.PlexH
 	// Create map for quick lookup
 	animeUpdateMap := make(map[int64]*domain.AnimeUpdate)
 	for _, au := range animeUpdates {
-		animeUpdateMap[au.PlexId] = au
+		if _, exists := animeUpdateMap[au.PlexId]; !exists {
+			animeUpdateMap[au.PlexId] = au
+		}
 	}
 
 	// Combine data - status is now in plex and animeUpdate directly
@@ -214,9 +224,18 @@ func (s *service) FindAllWithFilters(ctx context.Context, params domain.PlexPayl
 }
 
 func (s *service) Delete(ctx context.Context, req *domain.DeletePlexRequest) error {
+	if s.deletion != nil {
+		return s.deletion(ctx, func() error { return s.repo.Delete(ctx, req) })
+	}
 	return s.repo.Delete(ctx, req)
 }
 
 func (s *service) UpdateStatus(ctx context.Context, plexID int64, success *bool, errorType domain.PlexErrorType, errorMsg string) error {
 	return s.repo.UpdateStatus(ctx, plexID, success, errorType, errorMsg)
+}
+
+func SetSyncCoordinator(s Service, intake func(context.Context, *domain.AnimeUpdate, domain.PlexEvent) error, deletion func(context.Context, func() error) error) {
+	impl := s.(*service)
+	impl.intake = intake
+	impl.deletion = deletion
 }

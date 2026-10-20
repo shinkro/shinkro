@@ -15,11 +15,13 @@ import (
 
 	"github.com/shinkro/shinkro/internal/config"
 	"github.com/shinkro/shinkro/internal/database"
+	"github.com/shinkro/shinkro/internal/syncinspector"
 	"github.com/shinkro/shinkro/pkg/sse"
 	"github.com/shinkro/shinkro/web"
 )
 
 type Server struct {
+	syncInspector       *syncinspector.Service
 	log                 zerolog.Logger
 	db                  *database.DB
 	config              *config.AppConfig
@@ -112,6 +114,9 @@ func (s Server) Handler() http.Handler {
 
 	apiRouter.Group(func(r chi.Router) {
 		r.Use(s.IsAuthenticated)
+		if s.syncInspector != nil {
+			r.Route("/sync", s.syncRoutes)
+		}
 		r.Route("/config", newConfigHandler(encoder, s, s.config).Routes)
 		r.Route("/plex", newPlexHandler(encoder, s.plexService).Routes)
 		r.Route("/plex/settings", newPlexsettingsHandler(encoder, s.plexsettingsService).Routes)

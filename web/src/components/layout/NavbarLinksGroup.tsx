@@ -5,7 +5,7 @@ import { Link } from '@tanstack/react-router';
 import classes from './NavbarLinksGroup.module.css';
 
 interface LinksGroupProps {
-  icon: React.ComponentType<any>;
+  icon: React.ComponentType<{style?:React.CSSProperties}>;
   label: string;
   initiallyOpened?: boolean;
   links?: { label: string; link: string }[];

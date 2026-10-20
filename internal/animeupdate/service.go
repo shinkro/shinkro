@@ -26,6 +26,7 @@ type Service interface {
 }
 
 type service struct {
+	executor       func(context.Context, *domain.AnimeUpdate, domain.PlexEvent) error
 	log            zerolog.Logger
 	repo           domain.AnimeUpdateRepo
 	animeService   anime.Service
@@ -63,6 +64,9 @@ func (s *service) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest
 }
 
 func (s *service) UpdateAnimeList(ctx context.Context, anime *domain.AnimeUpdate, event domain.PlexEvent) error {
+	if s.executor != nil {
+		return s.executor(ctx, anime, event)
+	}
 	var err error
 	switch event {
 	case domain.PlexRateEvent:
@@ -147,7 +151,7 @@ func (s *service) updateAndStore(ctx context.Context, anime *domain.AnimeUpdate,
 
 	// Set status to SUCCESS before storing
 	anime.Status = domain.AnimeUpdateStatusSuccess
-	
+
 	// Store the update
 	if err := s.Store(ctx, anime); err != nil {
 		return err
@@ -192,12 +196,12 @@ func (s *service) publishAnimeUpdateFailed(anime *domain.AnimeUpdate, errorType 
 	anime.Status = domain.AnimeUpdateStatusFailed
 	anime.ErrorType = errorType
 	anime.ErrorMessage = errorMessage
-	
+
 	// Store the failed update record
 	if err := s.Store(context.Background(), anime); err != nil {
 		s.log.Error().Err(err).Msg("failed to store anime update failure record")
 	}
-	
+
 	s.bus.Publish(domain.EventAnimeUpdateFailed, &domain.AnimeUpdateFailedEvent{
 		AnimeUpdate:  anime,
 		ErrorType:    errorType,
@@ -302,3 +306,11 @@ func (s *service) GetByPlexIDs(ctx context.Context, plexIDs []int64) ([]*domain.
 func (s *service) FindAllWithFilters(ctx context.Context, params domain.AnimeUpdateQueryParams) (*domain.FindAnimeUpdatesResponse, error) {
 	return s.repo.FindAllWithFilters(ctx, params)
 }
+
+// SetExecutor transfers ownership of every live MAL write to the durable worker.
+func SetExecutor(s Service, fn func(context.Context, *domain.AnimeUpdate, domain.PlexEvent) error) {
+	s.(*service).executor = fn
+}
+
+// HasExecutor identifies the production writer cutover without expanding mocks.
+func HasExecutor(s Service) bool { impl, ok := s.(*service); return ok && impl.executor != nil }

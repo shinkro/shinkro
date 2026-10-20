@@ -135,7 +135,8 @@ export default ({mode}: ConfigEnv) => {
             proxy: {
                 "/api": {
                     target: "http://127.0.0.1:7011/",
-                    changeOrigin: true,
+                    // Preserve the browser host for operator Origin / CSRF checks.
+                    changeOrigin: false,
                     secure: false,
                 },
             },

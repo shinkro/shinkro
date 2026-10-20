@@ -1,18 +1,20 @@
 package domain
 
 type Config struct {
-	Version         string
-	ConfigPath      string
-	Host            string `koanf:"Host"`
-	Port            int    `koanf:"Port"`
-	BaseUrl         string `koanf:"BaseUrl"`
-	SessionSecret   string `koanf:"SessionSecret"`
-	EncryptionKey   string `koanf:"EncryptionKey"`
-	LogLevel        string `koanf:"LogLevel"`
-	LogPath         string `koanf:"LogPath"`
-	LogMaxSize      int    `koanf:"LogMaxSize"`
-	LogMaxBackups   int    `koanf:"LogMaxBackups"`
-	CheckForUpdates bool   `koanf:"CheckForUpdates"`
+	SyncWritesEnabled      bool `koanf:"SyncWritesEnabled"`
+	MALTokenRefreshEnabled bool `koanf:"MALTokenRefreshEnabled"`
+	Version                string
+	ConfigPath             string
+	Host                   string `koanf:"Host"`
+	Port                   int    `koanf:"Port"`
+	BaseUrl                string `koanf:"BaseUrl"`
+	SessionSecret          string `koanf:"SessionSecret"`
+	EncryptionKey          string `koanf:"EncryptionKey"`
+	LogLevel               string `koanf:"LogLevel"`
+	LogPath                string `koanf:"LogPath"`
+	LogMaxSize             int    `koanf:"LogMaxSize"`
+	LogMaxBackups          int    `koanf:"LogMaxBackups"`
+	CheckForUpdates        bool   `koanf:"CheckForUpdates"`
 }
 
 type ConfigUpdate struct {

@@ -67,7 +67,8 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, err := h.service.Login(r.Context(), data.Username, data.Password); err != nil {
+	user, err := h.service.Login(r.Context(), data.Username, data.Password)
+	if err != nil {
 		h.log.Error().Err(err).Msgf("Auth: Failed login attempt username: [%s] ip: %s", data.Username, r.RemoteAddr)
 		h.encoder.StatusError(w, http.StatusForbidden, errors.New("could not login: bad credentials"))
 		return
@@ -93,22 +94,12 @@ func (h authHandler) login(w http.ResponseWriter, r *http.Request) {
 
 	// Set user as authenticated
 	session.Values["authenticated"] = true
+	session.Values["username"] = data.Username
+	session.Values["user_id"] = user.ID
+	delete(session.Values, "sync_csrf")
 	session.Values["created"] = time.Now().Unix()
 
-	// Set cookie options
-	session.Options.HttpOnly = true
-	session.Options.Secure = false
-	session.Options.SameSite = http.SameSiteLaxMode
-	session.Options.Path = h.config.BaseUrl
-
-	// shinkro does not support serving on TLS / https, so this is only available behind reverse proxy
-	// if forwarded protocol is https then set cookie secure
-	// SameSite Strict can only be set with a secure cookie. So we overwrite it here if possible.
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite
-	if r.Header.Get("X-Forwarded-Proto") == "https" {
-		session.Options.Secure = true
-		session.Options.SameSite = http.SameSiteStrictMode
-	}
+	session.Options = userSessionOptions(r, h.config.BaseUrl, 30*24*60*60)
 
 	if err := session.Save(r, w); err != nil {
 		h.encoder.StatusError(w, http.StatusInternalServerError, errors.Wrap(err, "could not save session"))
@@ -130,9 +121,7 @@ func (h authHandler) logout(w http.ResponseWriter, r *http.Request) {
 		session.Values["authenticated"] = false
 
 		// MaxAge<0 means delete cookie immediately
-		session.Options.MaxAge = -1
-
-		session.Options.Path = h.config.BaseUrl
+		session.Options = userSessionOptions(r, h.config.BaseUrl, -1)
 
 		if err := session.Save(r, w); err != nil {
 			h.log.Error().Err(err).Msgf("could not store session: %s", r.RemoteAddr)

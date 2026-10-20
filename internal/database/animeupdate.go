@@ -55,7 +55,7 @@ func (repo *AnimeUpdateRepo) Store(ctx context.Context, r *domain.AnimeUpdate) e
 }
 
 func (repo *AnimeUpdateRepo) GetByID(ctx context.Context, req *domain.GetAnimeUpdateRequest) (*domain.AnimeUpdate, error) {
-	return nil, nil
+	return repo.getByID(ctx, req.Id)
 }
 
 func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
@@ -83,18 +83,13 @@ func (repo *AnimeUpdateRepo) Count(ctx context.Context) (int, error) {
 }
 
 func (repo *AnimeUpdateRepo) GetRecentUnique(ctx context.Context, limit int) ([]*domain.AnimeUpdate, error) {
-	latest := repo.db.squirrel.
-		Select("mal_id, MAX(time_stamp) AS max_ts").
-		From("anime_update").
-		Where(sq.Eq{"status": string(domain.AnimeUpdateStatusSuccess)}).
-		GroupBy("mal_id")
 
 	queryBuilder := repo.db.squirrel.
 		Select("au.id, au.mal_id, au.source_db, au.source_id, au.episode_num, au.season_num, au.time_stamp, au.list_details, au.list_status, au.plex_id, au.status, au.error_type, au.error_message").
-		FromSelect(latest, "latest").
-		Join("anime_update au ON latest.mal_id = au.mal_id AND latest.max_ts = au.time_stamp").
+		From("anime_update au").
+		Where("au.id = (SELECT latest.id FROM anime_update latest WHERE latest.mal_id=au.mal_id AND latest.status=? ORDER BY latest.time_stamp DESC,latest.id DESC LIMIT 1)", string(domain.AnimeUpdateStatusSuccess)).
 		Where(sq.Eq{"au.status": string(domain.AnimeUpdateStatusSuccess)}).
-		OrderBy("au.time_stamp DESC").
+		OrderBy("au.time_stamp DESC", "au.id DESC").
 		Limit(uint64(limit))
 
 	query, args, err := queryBuilder.ToSql()
@@ -141,7 +136,7 @@ func (repo *AnimeUpdateRepo) GetByPlexID(ctx context.Context, plexID int64) (*do
 		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id, status, error_type, error_message").
 		From("anime_update").
 		Where("plex_id = ?", plexID).
-		OrderBy("time_stamp DESC").
+		OrderBy("time_stamp DESC", "id DESC").
 		Limit(1)
 
 	query, args, err := queryBuilder.ToSql()
@@ -186,7 +181,7 @@ func (repo *AnimeUpdateRepo) GetByPlexIDs(ctx context.Context, plexIDs []int64) 
 		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id, status, error_type, error_message").
 		From("anime_update").
 		Where(sq.Eq{"plex_id": plexIDs}).
-		OrderBy("time_stamp DESC")
+		OrderBy("time_stamp DESC", "id DESC")
 
 	query, args, err := queryBuilder.ToSql()
 	if err != nil {
@@ -411,4 +406,45 @@ func parseMALID(s string) int {
 		return 0
 	}
 	return id
+}
+
+func (repo *AnimeUpdateRepo) getByID(ctx context.Context, id int) (*domain.AnimeUpdate, error) {
+	queryBuilder := repo.db.squirrel.
+		Select("id, mal_id, source_db, source_id, episode_num, season_num, time_stamp, list_details, list_status, plex_id, status, error_type, error_message").
+		From("anime_update").
+		Where("id = ?", id).
+		OrderBy("time_stamp DESC", "id DESC").
+		Limit(1)
+
+	query, args, err := queryBuilder.ToSql()
+	if err != nil {
+		return nil, errors.Wrap(err, "error building query")
+	}
+
+	row := repo.db.handler.QueryRowContext(ctx, query, args...)
+	var au domain.AnimeUpdate
+	var listDetailsBytes, listStatusBytes []byte
+	var status, errorType, errorMessage sql.NullString
+	if err := row.Scan(&au.ID, &au.MALId, &au.SourceDB, &au.SourceId, &au.EpisodeNum, &au.SeasonNum, &au.Timestamp, &listDetailsBytes, &listStatusBytes, &au.PlexId, &status, &errorType, &errorMessage); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil // No update for this plex_id
+		}
+		return nil, errors.Wrap(err, "error scanning row")
+	}
+	if err := json.Unmarshal(listDetailsBytes, &au.ListDetails); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling list_details")
+	}
+	if err := json.Unmarshal(listStatusBytes, &au.ListStatus); err != nil {
+		return nil, errors.Wrap(err, "error unmarshalling list_status")
+	}
+	if status.Valid {
+		au.Status = domain.AnimeUpdateStatusType(status.String)
+	}
+	if errorType.Valid {
+		au.ErrorType = domain.AnimeUpdateErrorType(errorType.String)
+	}
+	if errorMessage.Valid {
+		au.ErrorMessage = errorMessage.String
+	}
+	return &au, nil
 }

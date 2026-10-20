@@ -65,3 +65,6 @@ export const queryClient = new QueryClient({
     },
   },
 });
+
+// Inspector errors stay beside the affected action instead of replacing its history.
+queryClient.setQueryDefaults(["sync"], {throwOnError:false,retry:(count,error)=>count<2 && !("status" in error && Number(error.status)>=400 && Number(error.status)<500)});
