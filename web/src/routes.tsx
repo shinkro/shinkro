@@ -16,6 +16,8 @@ import {Dashboard} from "@screens/Dashboard";
 import {Logs} from "@screens/Logs";
 import {Settings} from "@screens/Settings";
 import {PlexPayloads} from "@screens/PlexPayloads";
+import {SyncInspector} from "@screens/SyncInspector";
+import {SyncEventDetail} from "@screens/SyncEventDetail";
 import {AnimeUpdates} from "@screens/AnimeUpdates";
 import {Application} from "@screens/settings/Application";
 import {User} from "@screens/settings/User";
@@ -88,6 +90,10 @@ const AnimeUpdatesRoute = createRoute({
     pendingMs: 3000,
     component: AnimeUpdates,
 });
+
+const syncSearch = z.object({q:z.coerce.string().optional(),status:z.string().optional(),source:z.string().optional(),event:z.string().optional(),tab:z.enum(['events','rules']).optional(),page:z.coerce.number().int().min(1).catch(1).optional()});
+export const SyncInspectorRoute = createRoute({getParentRoute:()=>AuthIndexRoute,path:'sync',validateSearch:syncSearch,component:SyncInspector});
+export const SyncEventRoute = createRoute({getParentRoute:()=>AuthIndexRoute,path:'sync/events/$eventId',validateSearch:syncSearch,component:SyncEventDetail});
 
 export const OnboardRoute = createRoute({
     getParentRoute: () => RootRoute,
@@ -297,7 +303,7 @@ const settingsRouteTree = SettingsRoute.addChildren([
     SettingsMappingRoute,
 ]);
 const authenticatedTree = AuthRoute.addChildren([
-    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, PlexPayloadsRoute, AnimeUpdatesRoute, settingsRouteTree]),
+    AuthIndexRoute.addChildren([DashboardRoute, LogsRoute, PlexPayloadsRoute, AnimeUpdatesRoute, SyncInspectorRoute, SyncEventRoute, settingsRouteTree]),
 ]);
 const routeTree = RootRoute.addChildren([
     LoginRoute,

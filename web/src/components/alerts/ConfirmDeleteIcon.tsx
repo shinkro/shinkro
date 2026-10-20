@@ -60,7 +60,7 @@ export const ConfirmDeleteIcon = ({
 
             <ActionIcon 
                 maw="20px"
-                variant={variant as any}
+                variant={variant}
                 color={color}
                 onClick={open}
             >

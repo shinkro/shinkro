@@ -54,12 +54,15 @@ func (s *Subscriber) handlePlexProcessedSuccess(event *domain.PlexProcessedSucce
 		s.log.Error().Err(err).Msg("failed to store plex success status")
 	}
 
-	// Trigger MAL update asynchronously as a side effect
+	// The production coordinator persisted the job before ProcessPlex published
+	// this event. Do not enqueue twice or publish recursively under EventBus's
+	// callback mutex. The compatibility path is used by older embedders/tests.
+	if animeupdate.HasExecutor(s.animeUpdateService) {
+		return
+	}
 	if event.AnimeUpdate != nil && event.Plex != nil {
 		go func() {
-			bgCtx := context.Background()
-			if err := s.animeUpdateService.UpdateAnimeList(bgCtx, event.AnimeUpdate, event.Plex.Event); err != nil {
-				// Error is already handled and published by UpdateAnimeList
+			if err := s.animeUpdateService.UpdateAnimeList(context.Background(), event.AnimeUpdate, event.Plex.Event); err != nil {
 				s.log.Debug().Err(err).Msg("MAL update failed")
 			}
 		}()
@@ -135,7 +138,6 @@ func (s *Subscriber) handleAnimeUpdateFailed(event *domain.AnimeUpdateFailedEven
 		Str("errorType", string(event.ErrorType)).
 		Str("error", event.ErrorMessage).
 		Msg("anime update failed")
-
 
 	// Extract anime title for better error messages
 	animeTitle := s.getAnimeTitle(event.AnimeUpdate)

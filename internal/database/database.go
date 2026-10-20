@@ -116,3 +116,6 @@ type Tx struct {
 	*sql.Tx
 	handler *DB
 }
+
+// SQL exposes the shared transactional connection for durable sync coordination.
+func (db *DB) SQL() *sql.DB { return db.handler }

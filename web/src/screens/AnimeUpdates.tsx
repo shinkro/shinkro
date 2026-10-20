@@ -220,6 +220,7 @@ function AnimeUpdatesTableContent({
                     return (
                         <Group gap="xs" justify="center">
                             <ActionsCell
+                                inspectId={update.plexID}
                                 onView={() => {
                                     setSelectedUpdate(row.original);
                                     open();

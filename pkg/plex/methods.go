@@ -245,3 +245,33 @@ func (c *Client) GetLibraries(ctx context.Context) (*LibraryResponse, error) {
 
 	return &libResp, nil
 }
+
+// Identity returns the machine identity of the configured server without
+// exposing its address, credentials, or a complete provider response in errors.
+func (c *Client) Identity(ctx context.Context) (string, error) {
+	base, err := url.Parse(c.config.Url)
+	if err != nil {
+		return "", errors.New("configured Plex server URL is invalid")
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base.JoinPath("/identity").String(), nil)
+	if err != nil {
+		return "", errors.New("Plex identity request could not be created")
+	}
+	response, err := c.http.Do(req)
+	if err != nil {
+		return "", errors.New("Plex identity request failed")
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", errors.New("Plex identity request was rejected")
+	}
+	var result struct {
+		MediaContainer struct {
+			MachineIdentifier string `json:"machineIdentifier"`
+		} `json:"MediaContainer"`
+	}
+	if err = json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&result); err != nil || result.MediaContainer.MachineIdentifier == "" {
+		return "", errors.New("Plex identity response was invalid")
+	}
+	return result.MediaContainer.MachineIdentifier, nil
+}

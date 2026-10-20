@@ -34,8 +34,7 @@ func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 				session.Values["authenticated"] = false
 
 				// MaxAge<0 means delete cookie immediately
-				session.Options.MaxAge = -1
-				session.Options.Path = s.config.Config.BaseUrl
+				session.Options = userSessionOptions(r, s.config.Config.BaseUrl, -1)
 
 				if err := session.Save(r, w); err != nil {
 					s.log.Error().Err(err).Msgf("could not store session: %s", r.RemoteAddr)
@@ -63,6 +62,7 @@ func (s Server) IsAuthenticated(next http.Handler) http.Handler {
 					s.log.Info().Msgf("Cookie is expiring in less than 7 days on %s - extending session", expires.Format("2006-01-02 15:04:05"))
 
 					session.Values["created"] = time.Now().Unix()
+					session.Options = userSessionOptions(r, s.config.Config.BaseUrl, 30*24*60*60)
 
 					// Call session.Save as needed - since it writes a header (the Set-Cookie
 					// header), making sure you call it before writing out a body is important.

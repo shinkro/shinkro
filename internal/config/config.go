@@ -51,16 +51,18 @@ func NewConfig(dir string, version string) *AppConfig {
 
 func (c *AppConfig) defaultConfig() {
 	c.Config = &domain.Config{
-		Version:         "dev",
-		Host:            "localhost",
-		Port:            7011,
-		BaseUrl:         "/",
-		LogLevel:        "INFO",
-		LogMaxSize:      50,
-		LogMaxBackups:   3,
-		SessionSecret:   api.GenerateSecureToken(16),
-		EncryptionKey:   api.GenerateSecureToken(32),
-		CheckForUpdates: true,
+		Version:                "dev",
+		SyncWritesEnabled:      true,
+		MALTokenRefreshEnabled: true,
+		Host:                   "localhost",
+		Port:                   7011,
+		BaseUrl:                "/",
+		LogLevel:               "INFO",
+		LogMaxSize:             50,
+		LogMaxBackups:          3,
+		SessionSecret:          api.GenerateSecureToken(16),
+		EncryptionKey:          api.GenerateSecureToken(32),
+		CheckForUpdates:        true,
 	}
 }
 
@@ -202,6 +204,12 @@ func (c *AppConfig) parseConfig(dir string) {
 
 func (c *AppConfig) parseEnv() {
 	prefix := "SHINKRO_"
+	if v := os.Getenv(prefix + "SYNC_WRITES_ENABLED"); v != "" {
+		c.Config.SyncWritesEnabled, _ = strconv.ParseBool(v)
+	}
+	if v := os.Getenv(prefix + "MAL_TOKEN_REFRESH_ENABLED"); v != "" {
+		c.Config.MALTokenRefreshEnabled, _ = strconv.ParseBool(v)
+	}
 
 	if v := os.Getenv(prefix + "HOST"); v != "" {
 		c.Config.Host = v

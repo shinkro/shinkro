@@ -16,6 +16,7 @@ Installation guide and documentation can be found at https://docs.shinkro.com
 - Support for multiple metadata agents, including default Plex agent, HAMA, and MyAnimeList.bundle.
 - Live updates to myanimelist as soon as you watch or rate in Plex.
 - Powerful anime-id mapping support, make custom maps or use the community mapping.
+- [Sync Inspector](docs/sync-inspector.md) explains sync results, previews corrections, and manages scoped local mapping rules.
 - Built on Go & React making shinkro lightweight and perfect for supporting multiple platforms (Linux, FreeBSD,
   Windows, macOS) on different architectures. (e.g. x86, ARM)
 - Discord & Gotify Notifications.

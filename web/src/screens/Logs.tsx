@@ -91,7 +91,7 @@ export const Logs = () => {
       const newLogs = logs.filter((log) => pattern.test(log.message));
       setFilteredLogs(newLogs);
       setIsInvalidRegex(false);
-    } catch (error) {
+    } catch {
       // Handle regex errors by showing nothing when the regex pattern is invalid
       setFilteredLogs([]);
       setIsInvalidRegex(true);
@@ -331,7 +331,7 @@ const LogFilesItem = ({ file }: LogFilesItemProps) => {
         message: "Log file downloaded successfully.",
         type: "success",
       });
-    } catch (err) {
+    } catch {
       displayNotification({
         title: "Download failed",
         message: "Failed to download log file.",

@@ -115,6 +115,14 @@ func (s *service) GetMalClient(ctx context.Context) (*mal.Client, error) {
 		return nil, err
 	}
 
+	// A copied dev credential must never rotate the production refresh token.
+	if !s.config.MALTokenRefreshEnabled {
+		if !token.Valid() {
+			return nil, errors.New("MAL access token expired; reconnect a separate dev account")
+		}
+		return mal.NewClient(oauth2.NewClient(ctx, oauth2.StaticTokenSource(token))), nil
+	}
+
 	// Fast path: if token is still valid, return immediately without lock
 	if token.Valid() {
 		return mal.NewClient(ma.Config.Client(ctx, token)), nil

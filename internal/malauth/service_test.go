@@ -443,3 +443,30 @@ func TestService_GetMalClient_WithValidToken(t *testing.T) {
 	// Verify it's a valid MAL client (has the expected structure)
 	assert.NotNil(t, client)
 }
+
+func TestStaticDevelopmentTokenNeverRefreshes(t *testing.T) {
+	cfg := &domain.Config{EncryptionKey: generateTestKey(), MALTokenRefreshEnabled: false}
+	repo := &mockMalAuthRepo{}
+	svc := NewService(cfg, zerolog.Nop(), repo).(*service)
+	iv := generateTestIV()
+	token := oauth2.Token{AccessToken: "read-only-copy", RefreshToken: "must-never-be-used", TokenType: "Bearer", Expiry: time.Now().Add(time.Hour)}
+	raw, err := json.Marshal(token)
+	require.NoError(t, err)
+	ma := domain.NewMalAuth("client", "secret", raw, iv)
+	require.NoError(t, svc.Store(context.Background(), ma))
+	client, err := svc.GetMalClient(context.Background())
+	require.NoError(t, err)
+	require.NotNil(t, client)
+	// Expired copies fail before an HTTP token exchange can happen, even with a
+	// refresh token present. The encrypted stored token is unchanged.
+	token.Expiry = time.Now().Add(-time.Hour)
+	raw, err = json.Marshal(token)
+	require.NoError(t, err)
+	ma = domain.NewMalAuth("client", "secret", raw, iv)
+	require.NoError(t, svc.Store(context.Background(), ma))
+	before := append([]byte(nil), repo.malAuth.AccessToken...)
+	client, err = svc.GetMalClient(context.Background())
+	require.ErrorContains(t, err, "expired")
+	require.Nil(t, client)
+	require.Equal(t, before, repo.malAuth.AccessToken)
+}

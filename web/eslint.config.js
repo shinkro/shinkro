@@ -1,6 +1,5 @@
 import reactRefresh from "eslint-plugin-react-refresh";
-import typescriptEslint from "@typescript-eslint/eslint-plugin";
-import typescriptParser from "@typescript-eslint/parser";
+import tseslint from "typescript-eslint";
 
 export default [
   {
@@ -9,7 +8,7 @@ export default [
   {
     files: ["**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx"],
     languageOptions: {
-      parser: typescriptParser,
+      parser: tseslint.parser,
       parserOptions: {
         ecmaVersion: 2020,
         sourceType: "module",
@@ -20,15 +19,16 @@ export default [
       },
     },
     plugins: {
-      "@typescript-eslint": typescriptEslint,
+      "@typescript-eslint": tseslint.plugin,
       "react-refresh": reactRefresh,
     },
     rules: {
-      ...typescriptEslint.configs.recommended.rules,
+      ...tseslint.plugin.configs.recommended.rules,
       "react-refresh/only-export-components": [
         "warn",
         { allowConstantExport: true },
       ],
     },
   },
+  {files:["src/routes.tsx"],rules:{"react-refresh/only-export-components":"off"}},
 ];

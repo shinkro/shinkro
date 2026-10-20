@@ -1,5 +1,7 @@
 package database
 
+import "github.com/shinkro/shinkro/internal/syncinspector"
+
 const schema = `
 CREATE TABLE anime 
 (
@@ -136,7 +138,7 @@ CREATE TABLE notification
 	updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-`
+` + syncinspector.Schema
 
 var migrations = []string{
 	"",
@@ -172,4 +174,6 @@ ALTER TABLE anime_update ADD COLUMN error_message TEXT;
 
 -- Set status to SUCCESS for existing anime_update records
 UPDATE anime_update SET status = 'SUCCESS' WHERE status IS NULL;`,
+	syncinspector.Schema,
+	syncinspector.SourceSchema,
 }
