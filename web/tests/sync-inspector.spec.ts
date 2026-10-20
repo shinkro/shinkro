@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
 const timestamp = "2026-10-19T12:00:00Z";
 const event = {
   id: 42,
@@ -30,9 +30,15 @@ async function fixture(
     noChange?: boolean;
     expired?: boolean;
     serverMissing?: boolean;
+    warnings?: string[];
+    statusChange?: boolean;
+    movie?: boolean;
   } = {},
 ) {
   page.on("pageerror", (error) => console.log("PAGE ERROR", error.message));
+  const eventData = options.movie
+    ? { ...event, mediaType: "movie", episode: 1 }
+    : event;
   let refreshed = false;
   let applications = 0;
   let previewCount = 0;
@@ -67,12 +73,13 @@ async function fixture(
         csrfToken: "fixture-csrf",
         previewTTLSeconds: 300,
       });
-    if (path === "/api/sync/events") return json({ data: [event], count: 1 });
+    if (path === "/api/sync/events")
+      return json({ data: [eventData], count: 1 });
     if (path === "/api/sync/events/42")
       return json({
         event: applications
           ? {
-              ...event,
+              ...eventData,
               status: "synced",
               errorCode: "",
               errorMessage: "",
@@ -80,10 +87,10 @@ async function fixture(
               malTitle: event.title,
               lastAction: "replay",
             }
-          : event,
-        original: event,
+          : eventData,
+        original: eventData,
         input: {
-          ...event,
+          ...eventData,
           eventId: 42,
           version: 1,
           serverId: options.serverMissing ? "" : "fixture-server",
@@ -228,9 +235,20 @@ async function fixture(
         after: ready ? { episodesWatched: 2 } : undefined,
         changes:
           ready && !options.noChange
-            ? [{ field: "episodesWatched", before: 1, after: 2 }]
+            ? [
+                { field: "episodesWatched", before: 1, after: 2 },
+                ...(options.statusChange
+                  ? [
+                      {
+                        field: "status",
+                        before: "plan_to_watch",
+                        after: "watching",
+                      },
+                    ]
+                  : []),
+              ]
             : [],
-        warnings: [],
+        warnings: options.warnings || [],
         accountId: "fixture-account",
       };
       lastPreview = preview;
@@ -289,7 +307,7 @@ test("Beerus recovery retains history and applies only after explicit review", a
   ).toBeVisible();
   await page.getByRole("link", { name: "Inspect", exact: true }).click();
   await expect(
-    page.getByText("Historical decision trace unavailable"),
+    page.getByText("Historical decision trace unavailable.", { exact: false }),
   ).toBeVisible();
   await expect(
     page.getByText("ANIME_NOT_IN_DB", { exact: true }),
@@ -304,8 +322,9 @@ test("Beerus recovery retains history and applies only after explicit review", a
     .getByRole("button", { name: "Preview again", exact: true })
     .click();
   await expect(
-    page.getByRole("cell", { name: "Episodes watched", exact: true }),
+    page.getByText("Episodes watched", { exact: true }),
   ).toBeVisible();
+  await page.getByText("How this match was found", { exact: true }).click();
   await expect(page.getByText("Data used", { exact: true })).toBeVisible();
   await expect(
     page.getByText("Last successful refresh", { exact: true }),
@@ -330,18 +349,17 @@ test("Beerus recovery retains history and applies only after explicit review", a
     .click();
   await expect(page.getByText("MAL progress updated.").first()).toBeVisible();
   expect(state.applications).toBe(1);
+  await page
+    .getByText("View saved plan and MAL observation", { exact: true })
+    .click();
   await expect(
-    page.getByText("Observed MAL result", { exact: true }),
+    page.getByText("Observed on MAL", { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByText("Confirmed by a MAL read after update", { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("columnheader", { name: "MAL at preview", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("columnheader", { name: "Planned change", exact: true }),
-  ).toBeVisible();
+  await expect(page.getByText("MAL at preview", { exact: true })).toBeVisible();
+  await expect(page.getByText("Planned change", { exact: true })).toBeVisible();
   await expect(
     page.getByText("These values are not a fresh MAL read.", { exact: false }),
   ).toBeVisible();
@@ -390,8 +408,9 @@ test("event correction remains personal; scoped rule save never applies MAL", as
     sourceEpisodeEnd: 12,
     malEpisodeStart: 1,
   });
-  await page.getByRole("button", { name: "Use this correction" }).click();
-  await page.getByRole("button", { name: "Preview now", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Preview correction", exact: true })
+    .click();
   await expect(
     page.getByText("This event only", { exact: true }),
   ).toBeVisible();
@@ -480,6 +499,12 @@ test("a correction draft disables an earlier approval until the editor closes", 
     .click();
   await expect(apply).toBeDisabled();
   await expect(
+    page.getByText("Previous preview", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Ready to review", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
     page.getByText("Close the correction editor or select a correction", {
       exact: false,
     }),
@@ -547,7 +572,9 @@ test("rule lifecycle requires reviewed scope and current revision", async ({
   await page.goto("/sync?tab=rules");
   await page.getByRole("button", { name: "Edit rule", exact: true }).click();
   await page.getByLabel("Source episode end").fill("11");
-  await page.getByRole("button", { name: "Discard edits", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Discard edits", exact: true })
+    .click();
   await expect(
     page.getByText("Discard these unsaved rule edits?", { exact: true }),
   ).toBeVisible();
@@ -555,7 +582,9 @@ test("rule lifecycle requires reviewed scope and current revision", async ({
   await page.getByRole("button", { name: "Keep editing", exact: true }).click();
   await expect(page.getByLabel("Source episode end")).toHaveValue("11");
   expect(edits).toBe(0);
-  await page.getByRole("button", { name: "Discard edits", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Discard edits", exact: true })
+    .click();
   await page
     .getByRole("button", { name: "Discard rule edits", exact: true })
     .click();
@@ -740,3 +769,646 @@ test("a legacy rule requires explicit all-server scope and a new impact review",
   });
   expect(state.applications).toBe(0);
 });
+
+test("events remain readable at mobile, tablet-sidebar and desktop widths", async ({
+  page,
+}) => {
+  await fixture(page, { writes: false });
+  const events = Array.from({ length: 8 }, (_, index) => ({
+    ...event,
+    id: index + 1,
+    title: `Example anime ${index + 1}: A very long descriptive title for a readable event history`,
+    status: index % 2 ? "synced" : "needs_mapping",
+    errorMessage: index % 2 ? "" : event.errorMessage,
+    malId: index % 2 ? 63367 : 0,
+    malTitle:
+      index % 2
+        ? "Matched destination title: A long alternate title with a season subtitle and additional catalogue information"
+        : "",
+  }));
+  await page.route("**/api/sync/events?**", (route) =>
+    route.fulfill({ json: { data: events, count: 8 } }),
+  );
+  for (const width of [375, 390, 820, 900, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/sync?status=needs_mapping&q=19859");
+    await expect(
+      page.getByRole("link", { name: "Inspect", exact: true }),
+    ).toHaveCount(8);
+    for (const label of ["Search events", "MAL outcome", "Source provider"]) {
+      const control = page.getByRole(
+        label === "Search events" ? "textbox" : "combobox",
+        { name: label, exact: true },
+      );
+      await expect(control).toBeVisible();
+      const bounds = await control.boundingBox();
+      expect(
+        bounds!.width,
+        `${label} usable at viewport ${width}`,
+      ).toBeGreaterThanOrEqual(140);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Needs mapping", exact: true }),
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[aria-label="Event pages"]')).toBeVisible();
+    await expect(
+      page.getByText("Matched destination title:", { exact: false }).first(),
+    ).toBeVisible();
+    if (width <= 390) {
+      for (const name of [
+        "Needs mapping",
+        "Clear filters",
+        "Refresh mapping data",
+      ]) {
+        const bounds = await page
+          .getByRole("button", { name, exact: true })
+          .boundingBox();
+        expect(
+          bounds!.height,
+          `${name} touch target at ${width}`,
+        ).toBeGreaterThanOrEqual(40);
+      }
+    }
+    if (width === 1440) {
+      await expect(
+        page.getByRole("table", { name: "Sync events" }),
+      ).toBeVisible();
+      const row = page
+        .getByRole("table", { name: "Sync events", exact: true })
+        .getByRole("row")
+        .nth(4);
+      const bounds = await row.boundingBox();
+      expect(bounds!.y + bounds!.height).toBeLessThan(800);
+    } else {
+      await expect(
+        page.getByRole("table", { name: "Sync events" }),
+      ).toHaveCount(0);
+    }
+  }
+});
+
+test("recorded result and preview precede metadata and match diagnostics", async ({
+  page,
+}) => {
+  await fixture(page, { writes: false });
+  await page.setViewportSize({ width: 1440, height: 800 });
+  await page.goto("/sync/events/42");
+  const preview = page.getByRole("button", {
+    name: "Preview now",
+    exact: true,
+  });
+  await expect(preview).toBeVisible();
+  const bounds = await preview.boundingBox();
+  expect(bounds!.y + bounds!.height).toBeLessThan(800);
+  await page
+    .getByRole("button", { name: "Refresh mapping data", exact: true })
+    .click();
+  await preview.click();
+  await expect(
+    page.getByRole("table", { name: "Proposed MAL changes" }),
+  ).toBeVisible();
+  await expect(page.getByText("Data used", { exact: true })).toBeHidden();
+  const apply = page.getByRole("button", {
+    name: "Sync MAL 63367 to episode 2",
+    exact: true,
+  });
+  await expect(apply).toBeDisabled();
+  const applyBounds = await apply.boundingBox();
+  const disclosureBounds = await page
+    .getByText("How this match was found", { exact: true })
+    .boundingBox();
+  expect(applyBounds!.y).toBeLessThan(disclosureBounds!.y);
+  await page.getByText("How this match was found", { exact: true }).click();
+  await expect(page.getByText("Data used", { exact: true })).toBeVisible();
+});
+
+test("empty event history differs from filtered no-results and has no pagination", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.route("**/api/sync/events?**", (route) =>
+    route.fulfill({ json: { data: [], count: 0 } }),
+  );
+  await page.goto("/sync");
+  await expect(
+    page.getByText("No sync events yet", { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[aria-label="Event pages"]')).toHaveCount(0);
+  await page.getByLabel("Search events", { exact: true }).fill("No match");
+  await expect(
+    page.getByText("No events match these filters", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Clear filters", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByText("No sync events yet", { exact: true }),
+  ).toBeVisible();
+});
+
+test("disabled write policy is concise while distinct preview warnings remain visible", async ({
+  page,
+}) => {
+  await fixture(page, {
+    writes: false,
+    warnings: [
+      "MAL writes are disabled on this instance. You can inspect, preview, and save local rules.",
+      "Original server identity was not saved. Confirm this event belongs to your server.",
+    ],
+  });
+  await page.goto("/sync/events/42");
+  await page
+    .getByRole("button", { name: "Refresh mapping data", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Preview now", exact: true }).click();
+  await expect(
+    page.getByText(
+      "MAL writes are disabled on this instance. You can inspect, preview, and save local rules.",
+      { exact: true },
+    ),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Original server identity was not saved. Confirm this event belongs to your server.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Applying is disabled on this instance. This preview has not changed MAL.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Sync MAL 63367 to episode 2",
+      exact: true,
+    }),
+  ).toBeDisabled();
+});
+
+test("detail read error retries locally and preserves event-list context", async ({
+  page,
+}) => {
+  await fixture(page);
+  let recovered = false;
+  await page.route("**/api/sync/events/42", (route) =>
+    recovered
+      ? route.fallback()
+      : route.fulfill({
+          status: 503,
+          json: {
+            code: "UNAVAILABLE",
+            message: "Event temporarily unavailable.",
+          },
+        }),
+  );
+  await page.goto("/sync/events/42?q=19859&status=needs_mapping");
+  const retry = page.getByRole("button", {
+    name: "Retry loading event",
+    exact: true,
+  });
+  await expect(retry).toBeVisible({ timeout: 15000 });
+  recovered = true;
+  await retry.click();
+  await expect(
+    page.getByRole("button", { name: "Preview now", exact: true }),
+  ).toBeEnabled();
+  await page
+    .getByRole("link", { name: "← Back to events", exact: true })
+    .click();
+  await expect(page.getByLabel("Search events", { exact: true })).toHaveValue(
+    "19859",
+  );
+  await expect(
+    page.getByRole("combobox", { name: "MAL outcome", exact: true }),
+  ).toHaveValue("Needs mapping");
+});
+
+test("essential metadata, amber status and server-scope captions retain readable contrast", async ({
+  page,
+}) => {
+  await fixture(page, { writes: false, serverMissing: true });
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto("/sync/events/42");
+  for (const theme of ["light", "dark"]) {
+    if (
+      (await page.locator("html").getAttribute("data-mantine-color-scheme")) !==
+      theme
+    )
+      await page
+        .getByRole("button", { name: "Theme Switch", exact: true })
+        .click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-mantine-color-scheme",
+      theme,
+    );
+    const samples = [
+      [
+        "episode metadata",
+        page.getByText(/Season 1 · Episode 2 · Watched · Event #42/),
+      ],
+      [
+        "disabled banner heading",
+        page.getByText("MAL writes disabled on this instance", { exact: true }),
+      ],
+      [
+        "mapping outcome",
+        page.getByText("Needs mapping", { exact: true }).first(),
+      ],
+      [
+        "preview instruction",
+        page.getByText(
+          "Preview reads the current mapping and MAL list state.",
+          { exact: false },
+        ),
+      ],
+    ] as const;
+    for (const [name, locator] of samples) {
+      const sample = await measureContrast(locator);
+      console.log(`${theme} ${name}: ${JSON.stringify(sample)}`);
+      expect(sample.ratio, `${theme} ${name}`).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+  await page
+    .getByRole("button", { name: "Choose a different MAL entry", exact: true })
+    .click();
+  await page
+    .getByLabel("MAL title or numeric ID", { exact: true })
+    .fill("63367");
+  await page
+    .getByRole("button", { name: "Search MAL entries", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Select entry", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Save as a local rule…", exact: true })
+    .click();
+  const caption = page.locator(".mantine-Checkbox-description");
+  const scopeSample = await measureContrast(caption);
+  console.log(`dark server scope caption: ${JSON.stringify(scopeSample)}`);
+  expect(scopeSample.ratio).toBeGreaterThanOrEqual(4.5);
+});
+
+async function measureContrast(locator: Locator) {
+  return locator.evaluate((element) => {
+    const rgba = (value: string) => {
+      const values = value.match(/[\d.]+/g)!.map(Number);
+      return value.startsWith("color(srgb")
+        ? [
+            ...values.slice(0, 3).map((channel) => channel * 255),
+            values[3] ?? 1,
+          ]
+        : values;
+    };
+    const over = (front: number[], back: number[]) =>
+      front
+        .slice(0, 3)
+        .map((v, i) => v * (front[3] ?? 1) + back[i] * (1 - (front[3] ?? 1)));
+    const chain: Element[] = [];
+    for (let node: Element | null = element; node; node = node.parentElement)
+      chain.unshift(node);
+    let background = [255, 255, 255];
+    for (const node of chain)
+      background = over(
+        rgba(getComputedStyle(node).backgroundColor),
+        background,
+      );
+    const style = getComputedStyle(element);
+    const color = rgba(style.color);
+    color[3] = (color[3] ?? 1) * Number(style.opacity);
+    const foreground = over(color, background);
+    const luminance = (rgb: number[]) =>
+      rgb
+        .map((c) => c / 255)
+        .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+        .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+    const a = luminance(foreground),
+      b = luminance(background);
+    return {
+      foreground: foreground.map(Math.round),
+      background: background.map(Math.round),
+      ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05),
+    };
+  });
+}
+
+test("narrow preview uses labelled current and proposed values without splitting watch status", async ({
+  page,
+}) => {
+  await fixture(page, { writes: false, statusChange: true });
+  await page.setViewportSize({ width: 375, height: 844 });
+  await page.goto("/sync/events/42");
+  await page
+    .getByRole("button", { name: "Refresh mapping data", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Preview now", exact: true }).click();
+  const changes = page.locator('[aria-label="Proposed MAL changes"]');
+  await expect(changes).toBeVisible();
+  await expect(
+    page.getByRole("table", { name: "Proposed MAL changes", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    changes.getByText("Watch status", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    changes.getByText("Plan to watch", { exact: true }),
+  ).toBeVisible();
+  const watching = changes.getByText("Watching", { exact: true });
+  await expect(watching).toBeVisible();
+  expect((await watching.boundingBox())!.height).toBeLessThan(30);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("small semantic outcome labels meet light-theme text contrast", async ({
+  page,
+}) => {
+  await fixture(page, { writes: false });
+  const statuses = [
+    "synced",
+    "no_change",
+    "needs_mapping",
+    "needs_sign_in",
+    "needs_review",
+    "failed",
+    "queued",
+    "processing",
+    "received",
+    "cancelled",
+  ];
+  await page.route("**/api/sync/events?**", (route) =>
+    route.fulfill({
+      json: {
+        data: statuses.map((status, index) => ({
+          ...event,
+          id: index + 1,
+          status,
+          errorMessage: "",
+        })),
+        count: statuses.length,
+      },
+    }),
+  );
+  await page.goto("/sync");
+  if (
+    (await page.locator("html").getAttribute("data-mantine-color-scheme")) !==
+    "light"
+  )
+    await page
+      .getByRole("button", { name: "Theme Switch", exact: true })
+      .click();
+  for (const label of [
+    "Synced",
+    "No change needed",
+    "Needs mapping",
+    "Needs sign-in",
+    "Needs review",
+    "Failed",
+    "Queued",
+    "Processing",
+    "Not recorded",
+    "Cancelled",
+  ]) {
+    const outcome = page
+      .locator(".mantine-Badge-root")
+      .getByText(label, { exact: true });
+    await expect(outcome).toBeVisible();
+    const sample = await measureContrast(outcome);
+    console.log(`light ${label}: ${JSON.stringify(sample)}`);
+    expect(sample.ratio, label).toBeGreaterThanOrEqual(4.5);
+  }
+});
+
+test("persistent rule edits survive attempted tab and source navigation until explicit discard", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  await page.route("**/api/sync/overrides", (route) =>
+    route.request().method() === "GET"
+      ? route.fulfill({
+          json: {
+            data: [
+              {
+                id: "draft-rule",
+                revision: 1,
+                eventId: 42,
+                source: "anidb",
+                sourceId: 19859,
+                season: 1,
+                library: "Anime",
+                account: "sample-user",
+                serverId: "fixture-server",
+                mediaType: "episode",
+                sourceEpisodeStart: 1,
+                sourceEpisodeEnd: 12,
+                malEpisodeStart: 1,
+                malId: 63367,
+                active: true,
+                createdAt: timestamp,
+              },
+            ],
+          },
+        })
+      : route.fallback(),
+  );
+  await page.goto("/sync/events/42");
+  await page
+    .getByRole("link", { name: "← Back to events", exact: true })
+    .click();
+  await page.getByRole("tab", { name: "Local rules", exact: true }).click();
+  await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+  await page.getByLabel("Source episode end", { exact: true }).fill("11");
+  await page.getByRole("tab", { name: "Events", exact: true }).click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Discard unsaved rule changes?",
+    exact: true,
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Keep editing", exact: true })
+    .click();
+  await page.evaluate(() => window.history.back());
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Keep editing", exact: true })
+    .click();
+
+  await expect(
+    page.getByLabel("Source episode end", { exact: true }),
+  ).toHaveValue("11");
+  await page
+    .getByRole("link", { name: "Inspect source event", exact: true })
+    .click();
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Keep editing", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Source episode end", { exact: true }),
+  ).toHaveValue("11");
+  await page
+    .getByRole("link", { name: "Inspect source event", exact: true })
+    .click();
+  await confirmation
+    .getByRole("button", { name: "Discard and continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Preview now", exact: true }),
+  ).toBeVisible();
+  expect(state.applications).toBe(0);
+  expect(state.savedRule).toBeUndefined();
+});
+
+test("new persistent drafts guard Back navigation while event-only lookups stay free", async ({
+  page,
+}) => {
+  await fixture(page);
+  await page.goto("/sync/events/42");
+  await page
+    .getByRole("button", { name: "Choose a different MAL entry", exact: true })
+    .click();
+  await page
+    .getByLabel("MAL title or numeric ID", { exact: true })
+    .fill("63367");
+  await page
+    .getByRole("button", { name: "Search MAL entries", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Select entry", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Save as a local rule…", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "← Back to events", exact: true })
+    .click();
+  const confirmation = page.getByRole("dialog", {
+    name: "Discard unsaved rule changes?",
+    exact: true,
+  });
+  await expect(confirmation).toBeVisible();
+  await confirmation
+    .getByRole("button", { name: "Keep editing", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Source episode end", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("link", { name: "← Back to events", exact: true })
+    .click();
+  await confirmation
+    .getByRole("button", { name: "Discard and continue", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sync Inspector", exact: true }),
+  ).toBeVisible();
+  await page.goto("/sync/events/42");
+  await page
+    .getByRole("button", { name: "Choose a different MAL entry", exact: true })
+    .click();
+  await page
+    .getByLabel("MAL title or numeric ID", { exact: true })
+    .fill("Lookup draft");
+  await page
+    .getByRole("link", { name: "← Back to events", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sync Inspector", exact: true }),
+  ).toBeVisible();
+  await expect(confirmation).toHaveCount(0);
+});
+
+for (const movie of [false, true]) {
+  test(`keyboard destination selection focuses ${movie ? "movie preview" : "episode review"} and remains read-only`, async ({
+    page,
+  }) => {
+    const state = await fixture(page, { writes: false, movie });
+    await page.goto("/sync/events/42");
+    await page
+      .getByRole("button", {
+        name: "Choose a different MAL entry",
+        exact: true,
+      })
+      .click();
+    await page
+      .getByLabel("MAL title or numeric ID", { exact: true })
+      .fill("63367");
+    await page
+      .getByRole("button", { name: "Search MAL entries", exact: true })
+      .click();
+    const select = page.getByRole("button", {
+      name: "Select entry",
+      exact: true,
+    });
+    await select.focus();
+    await page.keyboard.press("Enter");
+    const preview = page.getByRole("button", {
+      name: "Preview correction",
+      exact: true,
+    });
+    const target = page.getByLabel("Target MAL episode", { exact: true });
+    await expect(movie ? preview : target).toBeFocused();
+    await expect(
+      page.getByText("Selected destination", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", {
+        name: "Dragon Ball Super: Beerus · MAL 63367",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(state.bodies).toEqual([]);
+    expect(state.applications).toBe(0);
+    await page
+      .getByRole("button", { name: "Change entry", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    const searchInput = page.getByLabel("MAL title or numeric ID", {
+      exact: true,
+    });
+    await expect(searchInput).toBeFocused();
+    await select.focus();
+    await page.keyboard.press("Enter");
+    await expect(movie ? preview : target).toBeFocused();
+    await page
+      .getByRole("button", { name: "Save as a local rule…", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByRole("heading", {
+        name: "Create a persistent local rule",
+        exact: true,
+      }),
+    ).toBeFocused();
+    await page
+      .getByRole("button", { name: "← Back to event correction", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    await page
+      .getByRole("button", { name: "Discard rule draft", exact: true })
+      .focus();
+    await page.keyboard.press("Enter");
+    await expect(movie ? preview : target).toBeFocused();
+    if (!movie) {
+      await target.fill("3");
+      await page.keyboard.press("Tab");
+      await expect(preview).toBeFocused();
+    }
+    await page.keyboard.press("Enter");
+    await expect(
+      page.getByText("This event only", { exact: true }),
+    ).toBeVisible();
+    expect(state.bodies).toEqual([
+      { correction: { malId: 63367, episode: movie ? 1 : 3 } },
+    ]);
+    expect(state.applications).toBe(0);
+    expect(state.savedRule).toBeUndefined();
+  });
+}

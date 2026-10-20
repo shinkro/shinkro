@@ -13,6 +13,7 @@ import {
   Text,
 } from "@mantine/core";
 import { useQuery } from "@tanstack/react-query";
+import { useResizeObserver } from "@mantine/hooks";
 import { Link } from "@tanstack/react-router";
 import {
   syncAPI,
@@ -21,11 +22,19 @@ import {
   type Resolution,
   type MALState,
 } from "@api/sync";
+import classes from "./SyncInspector.module.css";
 
 export function Outcome({ status }: { status: string }) {
   return (
     <Badge
       variant="light"
+      className={
+        status === "needs_mapping" || status === "needs_review"
+          ? classes.attentionBadge
+          : ["synced", "no_change", "enabled"].includes(status)
+            ? classes.successBadge
+            : undefined
+      }
       color={
         status === "synced" || status === "no_change" || status === "enabled"
           ? "green"
@@ -52,12 +61,27 @@ export function ReadableTime({ value }: { value?: string }) {
     </Text>
   );
 }
-export function ErrorNotice({ error }: { error: unknown }) {
+export function ErrorNotice({
+  error,
+  onRetry,
+  retryLabel = "Retry loading",
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  retryLabel?: string;
+}) {
   return (
     <Alert color="red" title="Unable to complete this action" role="alert">
       {error instanceof Error
         ? error.message
         : "Something went wrong. Please retry."}
+      {onRetry && (
+        <Group mt="sm">
+          <Button size="xs" onClick={onRetry}>
+            {retryLabel}
+          </Button>
+        </Group>
+      )}
       {error instanceof SyncError &&
         (error.status === 401 || error.status === 403) && (
           <Group mt="sm">
@@ -84,15 +108,31 @@ export function DevBanner({
     queryFn: syncAPI.capabilities,
   });
   return cap.data?.writesEnabled === false ? (
-    <Alert color="yellow" title="MAL writes disabled on this instance">
-      {developmentBuild && (
-        <Badge color="yellow" mb="xs">
-          Development build
-        </Badge>
-      )}
-      <Text size="sm">
-        Inspect, preview, refresh data and save local rules here. Applying a
-        sync to MyAnimeList is disabled by the server.
+    <Alert
+      color="yellow"
+      className={classes.writePolicy}
+      p="sm"
+      title={
+        <Group gap="xs">
+          <Text size="sm" fw={600}>
+            MAL writes disabled on this instance
+          </Text>
+          {developmentBuild && (
+            <Badge
+              size="xs"
+              color="yellow"
+              variant="light"
+              className={classes.attentionBadge}
+            >
+              Development build
+            </Badge>
+          )}
+        </Group>
+      }
+    >
+      <Text size="xs">
+        Inspect, preview and manage local rules. Applying a sync to MyAnimeList
+        is disabled by the server.
       </Text>
     </Alert>
   ) : null;
@@ -119,33 +159,45 @@ const origins: Record<string, string> = {
   local_override: "Local override",
   event_correction: "This event only",
 };
-export function ResolutionTrace({ resolution }: { resolution: Resolution }) {
+export function ResolutionTrace({
+  resolution,
+  summaryOnly = false,
+  detailsOnly = false,
+}: {
+  resolution: Resolution;
+  summaryOnly?: boolean;
+  detailsOnly?: boolean;
+}) {
   return (
     <Stack gap="sm">
-      <Group>
-        <Badge variant="outline">
-          {origins[resolution.origin] || resolution.origin}
-        </Badge>
-        {resolution.malId > 0 && (
-          <MALLink id={resolution.malId} title={resolution.title} />
-        )}
-      </Group>
-      {resolution.episode > 0 && (
+      {!detailsOnly && (
+        <Group gap="xs">
+          <Badge variant="outline">
+            {origins[resolution.origin] || resolution.origin}
+          </Badge>
+          {resolution.malId > 0 && (
+            <MALLink id={resolution.malId} title={resolution.title} />
+          )}
+        </Group>
+      )}
+      {!detailsOnly && !summaryOnly && resolution.episode > 0 && (
         <Text size="sm">Target episode {resolution.episode}</Text>
       )}
-      <Stack component="ol" gap="xs" m={0} pl="lg">
-        {resolution.steps?.map((step, index) => (
-          <li key={index}>
-            <Text size="sm" fw={600}>
-              {step.label}
-            </Text>
-            <Text size="sm" c="dimmed" style={{ overflowWrap: "anywhere" }}>
-              {step.detail}
-            </Text>
-          </li>
-        ))}
-      </Stack>
-      {!!resolution.sources?.length && (
+      {!summaryOnly && (
+        <Stack component="ol" gap="xs" m={0} pl="lg">
+          {resolution.steps?.map((step, index) => (
+            <li key={index}>
+              <Text size="sm" fw={600}>
+                {step.label}
+              </Text>
+              <Text size="sm" c="dimmed" style={{ overflowWrap: "anywhere" }}>
+                {step.detail}
+              </Text>
+            </li>
+          ))}
+        </Stack>
+      )}
+      {!summaryOnly && !!resolution.sources?.length && (
         <Stack gap="xs">
           <Text size="sm" fw={600}>
             Data used
@@ -223,44 +275,97 @@ export function ChangeDiff({
   preview: Preview;
   recorded?: boolean;
 }) {
-  return preview.changes?.length ? (
-    <Table
-      withTableBorder
-      verticalSpacing="sm"
-      style={{ tableLayout: "fixed" }}
-    >
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Field</Table.Th>
-          <Table.Th>{recorded ? "MAL at preview" : "Current on MAL"}</Table.Th>
-          <Table.Th>{recorded ? "Planned change" : "Proposed"}</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        {preview.changes.map((change) => (
-          <Table.Tr key={change.field}>
-            <Table.Td style={{ overflowWrap: "anywhere" }}>
-              {fields[change.field] || change.field}
-            </Table.Td>
-            <Table.Td style={{ overflowWrap: "anywhere" }}>
-              {displayValue(change.before)}
-            </Table.Td>
-            <Table.Td style={{ overflowWrap: "anywhere" }}>
-              <Text fw={600} size="sm">
-                {displayValue(change.after)}
-              </Text>
-            </Table.Td>
-          </Table.Tr>
-        ))}
-      </Table.Tbody>
-    </Table>
-  ) : preview.ready ? (
-    <Alert color="green" title="No change needed">
-      {recorded
-        ? "No change was planned for this attempt."
-        : "The MAL state at this preview already satisfies the event. Nothing will be written."}
-    </Alert>
-  ) : null;
+  const [diffRef, rect] = useResizeObserver();
+  const compact = rect.width > 0 && rect.width <= 500;
+  const currentLabel = recorded ? "MAL at preview" : "Current on MAL";
+  const proposedLabel = recorded ? "Planned change" : "Proposed";
+  return (
+    <div ref={diffRef}>
+      {preview.changes?.length ? (
+        compact ? (
+          <Stack
+            gap="xs"
+            aria-label={
+              recorded ? "Saved MAL change plan" : "Proposed MAL changes"
+            }
+          >
+            {preview.changes.map((change) => (
+              <Paper withBorder p="sm" key={change.field}>
+                <Text size="sm" fw={600} mb="xs">
+                  {fields[change.field] || change.field}
+                </Text>
+                <div className={classes.changeMobile}>
+                  <div>
+                    <Text size="xs" className={classes.meta}>
+                      {currentLabel}
+                    </Text>
+                    <Text size="sm" mt={3} style={{ overflowWrap: "anywhere" }}>
+                      {displayValue(change.before)}
+                    </Text>
+                  </div>
+                  <div>
+                    <Text size="xs" className={classes.meta}>
+                      {proposedLabel}
+                    </Text>
+                    <Text
+                      size="sm"
+                      fw={600}
+                      mt={3}
+                      style={{ overflowWrap: "anywhere" }}
+                    >
+                      {displayValue(change.after)}
+                    </Text>
+                  </div>
+                </div>
+              </Paper>
+            ))}
+          </Stack>
+        ) : (
+          <Table
+            withTableBorder
+            verticalSpacing="xs"
+            horizontalSpacing="xs"
+            fz="sm"
+            aria-label={
+              recorded ? "Saved MAL change plan" : "Proposed MAL changes"
+            }
+            style={{ tableLayout: "fixed" }}
+          >
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>Field</Table.Th>
+                <Table.Th>{currentLabel}</Table.Th>
+                <Table.Th>{proposedLabel}</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {preview.changes.map((change) => (
+                <Table.Tr key={change.field}>
+                  <Table.Td style={{ overflowWrap: "anywhere" }}>
+                    {fields[change.field] || change.field}
+                  </Table.Td>
+                  <Table.Td style={{ overflowWrap: "anywhere" }}>
+                    {displayValue(change.before)}
+                  </Table.Td>
+                  <Table.Td style={{ overflowWrap: "anywhere" }}>
+                    <Text fw={600} size="sm">
+                      {displayValue(change.after)}
+                    </Text>
+                  </Table.Td>
+                </Table.Tr>
+              ))}
+            </Table.Tbody>
+          </Table>
+        )
+      ) : preview.ready ? (
+        <Alert color="green" title="No change needed">
+          {recorded
+            ? "No change was planned for this attempt."
+            : "The MAL state at this preview already satisfies the event. Nothing will be written."}
+        </Alert>
+      ) : null}
+    </div>
+  );
 }
 export function SignInAction({ code }: { code?: string }) {
   return code?.includes("AUTH") || code?.includes("SIGN_IN") ? (
@@ -278,8 +383,8 @@ export function Section({
 }) {
   return (
     <Paper withBorder p="md" radius="md">
-      <Stack gap="md">
-        <Text component="h2" size="lg" fw={700} m={0}>
+      <Stack gap="sm">
+        <Text component="h2" size="md" fw={700} m={0}>
           {title}
         </Text>
         {children}
@@ -321,6 +426,7 @@ export function RuleServerScope({
         <Checkbox
           label="All servers in this library and Plex account"
           description={`${account} / ${library}. The provider, title ID, season and episode range still limit this rule.`}
+          styles={{ description: { color: "var(--mantine-color-text)" } }}
           checked={anyServer}
           onChange={(event) => onChange(event.currentTarget.checked)}
         />
@@ -354,10 +460,10 @@ export function ObservedResult({
     ["Finish date", state.finishDate],
   ] as const;
   return (
-    <Paper withBorder p="sm">
+    <Paper withBorder p="sm" className={classes.target}>
       <Stack gap="sm">
         <Text fw={600} size="sm">
-          Observed MAL result
+          Observed on MAL
         </Text>
         <Group justify="space-between">
           <Text size="xs" c="dimmed">

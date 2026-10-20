@@ -8,13 +8,13 @@ Filter events by outcome or search for a title or source ID. Open an event to se
 
 Older events may lack a historical decision trace. The inspector shows the original facts it can recover and labels unavailable history. A new preview evaluates the event using today's mapping data and MAL state.
 
-Saved attempt previews describe the plan evaluated at that time. A separate observed-result card, when available, shows values returned by MAL and when they were observed. Under **Data used**, a local observation records when this instance saw a mapping snapshot; it does not establish how recently the upstream source was updated.
+The **Recorded result** preserves the original outcome. Saved attempts can be expanded to review their historical plan and, when available, a separate **Observed on MAL** result with its observation time. Under **How this match was found → Data used**, a local observation records when this instance saw a mapping snapshot; it does not establish how recently the upstream source was updated.
 
 ## Preview and correct an event
 
 1. Select **Refresh mapping data** if the catalogue or community mapping may have changed.
 2. Select **Preview now**. Check the MAL title, converted episode, proposed field changes, and any warnings. Previewing makes no MAL list changes.
-3. If the destination is wrong, select **Choose a different MAL entry**. Search for a title or enter its numeric MAL ID, verify the title, select **Use this correction**, and then **Preview now**. The default scope is **This event only**.
+3. If the destination is wrong, select **Choose a different MAL entry**. Search for a title or enter its numeric MAL ID, select the verified entry, check its target episode, and select **Preview correction**. This reads a fresh preview for **This event only**; it does not apply a MAL update.
 4. When writes are enabled, explicitly apply the reviewed preview. The inspector records the new attempt and its result. Previews expire after five minutes; changed mapping, account or relevant MAL state requires another preview.
 
 An already satisfied event needs no update. A correction to a different MAL entry does not undo changes previously made to the old entry. Old watch activity and ratings can require review to protect newer list progress.

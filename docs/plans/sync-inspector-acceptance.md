@@ -121,6 +121,17 @@ Chrome access is now working. An authenticated walkthrough used the isolated cop
 
 Validation passed: all 24 desktop/mobile browser fixtures, frontend production build and lint, full Go tagged integration, race checks for the affected backend packages, and Go vet. The browser fixtures cover explicit fake-provider apply, stale/expired previews, conflict and session errors, observed-versus-planned results, and disabled writes. PR CI for the initial feature revision passed, including browser journeys, integration, unit tests and image build; subsequent changes require their own CI result.
 
+### Designer-led UI refinement — 2026-10-20
+
+A designer reviewed the actual Inspector alongside the existing history screens, handed the requirements directly to frontend engineering, and reviewed three implementation rounds. The [refinement brief and rendered acceptance](sync-inspector-ui-refinement.md) record the decisions and evidence.
+
+- Events now share the existing bordered workspace/table language, with readable destination names, relative ages, compact rows, responsive cards and usable filters at narrow and sidebar-constrained widths.
+- Recorded history and the next recovery action precede secondary metadata. Current destination, converted episode, field changes and approval/disabled state are grouped together; matching diagnostics and saved plan/observation details expand on demand.
+- Event-only correction creates a fresh preview directly after explicit selection. Persistent rules have a separate scope/impact flow, and leaving an unsaved persistent draft requires confirmation. Keyboard focus follows deliberate transitions between lookup, selected target and rule review.
+- Targeted checks verify complete fourth-row visibility with long titles at 1440×800, readable filters at 375/390/820/900px, 40px mobile utilities, stacked narrow change reviews, and contrast for essential sampled labels and semantic states. This does not claim complete accessibility certification.
+
+Frontend production build, lint and all 48 desktop/mobile browser tests passed after the refinements. The original approval, history, observed-result and write-disabled scenarios remain covered, together with navigation/discard protection, contextual read retries and keyboard episode/movie corrections. Personal screenshots stay outside Git; no real MAL write is part of this acceptance.
+
 ### Remaining release verification
 
 - Complete the development deployment and review the final image through its deployed UI. Record the image revision/digest, migration, isolation controls, production health and compatible rollback in the private deployment report.

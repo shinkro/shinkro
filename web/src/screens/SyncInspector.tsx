@@ -2,6 +2,8 @@ import { syncKeys, statusLabels } from "@components/sync/values";
 import { useState } from "react";
 import {
   Alert,
+  Anchor,
+  Badge,
   Button,
   Container,
   Group,
@@ -28,6 +30,10 @@ import {
   ReadableTime,
   RuleServerScope,
 } from "@components/sync/shared";
+import { EventList } from "@components/sync/EventList";
+import { RuleDraftGuard } from "@components/sync/RuleDraftGuard";
+import classes from "@components/sync/SyncInspector.module.css";
+import { FaSearch, FaSyncAlt } from "react-icons/fa";
 
 export function SyncInspector() {
   const search = SyncInspectorRoute.useSearch();
@@ -60,197 +66,211 @@ export function SyncInspector() {
   });
   const filters = (patch: Partial<typeof search>) =>
     void navigate({ search: (prev) => ({ ...prev, ...patch, page: 1 }) });
+  const filtered = !!(
+    search.q ||
+    search.status ||
+    search.source ||
+    search.event
+  );
+  const clearFilters = () =>
+    filters({ q: "", status: "", source: "", event: "" });
+  const count = events.data?.count;
+  const start = ((search.page || 1) - 1) * 25 + 1;
   return (
-    <Container size={1200} py="lg">
-      <Stack gap="lg">
-        <Group justify="space-between">
-          <div>
-            <Title order={1} size="h2">
-              Sync Inspector
-            </Title>
-            <Text c="dimmed" size="sm">
-              Understand each MAL sync, preview a correction, and recover
-              safely.
-            </Text>
+    <Container size={1200} px="md" component="main" className={classes.page}>
+      <Stack gap="md" mt="md" pb="lg">
+        <div>
+          <Group justify="space-between" align="start" gap="sm">
+            <div>
+              <Title order={2}>Sync Inspector</Title>
+              <Text size="sm" mt={4}>
+                Understand sync results, preview corrections, and recover
+                safely.
+              </Text>
+            </div>
+            <Button
+              size="xs"
+              className={classes.touchUtility}
+              leftSection={<FaSyncAlt size={11} />}
+              loading={refresh.isPending}
+              disabled={!cap.data}
+              onClick={() => refresh.mutate()}
+            >
+              Refresh mapping data
+            </Button>
+          </Group>
+          <div aria-live="polite">
+            {refresh.error && <ErrorNotice error={refresh.error} />}
+            {refreshedAt && (
+              <Text size="sm">
+                Mapping data refreshed {new Date(refreshedAt).toLocaleString()}.
+                Existing events were not retried.
+              </Text>
+            )}
           </div>
-          <Button
-            loading={refresh.isPending}
-            disabled={!cap.data}
-            onClick={() => refresh.mutate()}
-          >
-            Refresh mapping data
-          </Button>
-        </Group>
-        {cap.error && <ErrorNotice error={cap.error} />}
-        <div aria-live="polite">
-          {refresh.error && <ErrorNotice error={refresh.error} />}
-          <Text size="xs" c="dimmed">
-            {refreshedAt
-              ? `Mapping data refreshed ${new Date(refreshedAt).toLocaleString()}. Existing events were not retried.`
-              : "Refresh checks the catalogue and mapping cache. Refresh time unavailable."}
-          </Text>
         </div>
-        <Tabs
-          value={search.tab || "events"}
-          onChange={(value) =>
-            filters({ tab: value === "rules" ? "rules" : "events" })
-          }
-        >
-          <Tabs.List>
-            <Tabs.Tab value="events">Events</Tabs.Tab>
-            <Tabs.Tab value="rules">Local rules</Tabs.Tab>
-          </Tabs.List>
-          <Tabs.Panel value="events" pt="md">
-            <Stack>
-              <Group align="end" grow>
-                <TextInput
-                  label="Search events"
-                  placeholder="Title, source ID or MAL ID"
-                  value={search.q || ""}
-                  onChange={(e) => filters({ q: e.currentTarget.value })}
-                />
-                <Select
-                  label="MAL outcome"
-                  clearable
-                  placeholder="All outcomes"
-                  data={Object.entries(statusLabels).map(([value, label]) => ({
-                    value,
-                    label,
-                  }))}
-                  value={search.status || null}
-                  onChange={(v) => filters({ status: v || "" })}
-                />
-                <Select
-                  label="Source provider"
-                  clearable
-                  placeholder="All providers"
-                  data={["anidb", "tvdb", "tmdb", "myanimelist"].map((v) => ({
-                    value: v,
-                    label: v.toUpperCase(),
-                  }))}
-                  value={search.source || null}
-                  onChange={(v) => filters({ source: v || "" })}
-                />
-              </Group>
-              <Group>
-                <Button
-                  size="xs"
-                  onClick={() => filters({ status: "needs_mapping" })}
-                >
-                  Needs mapping
-                </Button>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  onClick={() =>
-                    filters({ q: "", status: "", source: "", event: "" })
-                  }
-                >
-                  Clear filters
-                </Button>
-                <Text size="sm" c="dimmed">
-                  {events.data?.count ?? "…"} events
-                </Text>
-              </Group>
-              {events.isPending ? (
-                <Stack>
-                  {[1, 2, 3].map((v) => (
-                    <Skeleton key={v} height={100} />
-                  ))}
-                </Stack>
-              ) : events.error ? (
-                <Stack>
-                  <ErrorNotice error={events.error} />
-                  <Button onClick={() => void events.refetch()}>
-                    Retry loading events
-                  </Button>
-                </Stack>
-              ) : events.data?.data.length ? (
-                events.data.data.map((event) => (
-                  <Paper key={event.id} withBorder p="md" radius="md">
-                    <Group justify="space-between" align="start" wrap="wrap">
-                      <Stack gap={5} style={{ minWidth: 0, flex: 1 }}>
-                        <Text fw={700} style={{ overflowWrap: "anywhere" }}>
-                          {event.title || "Untitled event"}
-                        </Text>
-                        <Text size="sm">
-                          {event.mediaType === "movie"
-                            ? "Movie"
-                            : `S${event.season} E${event.episode}`}
-                          {event.event.includes("rate")
-                            ? ` · Rating ${event.rating}/10`
-                            : ""}{" "}
-                          · {event.account || "Unknown account"} /{" "}
-                          {event.library || "Unknown library"}
-                        </Text>
-                        <Group gap="xs">
-                          <Outcome status={event.status} />
-                          {event.lastAction &&
-                            !["Original sync", "Received"].includes(
-                              event.lastAction,
-                            ) && (
-                              <Text size="xs" c="dimmed">
-                                Latest {event.lastAction.replaceAll("_", " ")}{" "}
-                                attempt
-                              </Text>
-                            )}
-                          {event.malId > 0 ? (
-                            <MALLink id={event.malId} title={event.malTitle} />
-                          ) : (
-                            <Text size="sm" c="dimmed">
-                              {event.source?.toUpperCase() || "Unknown source"}{" "}
-                              {event.sourceId || "ID unavailable"}
-                            </Text>
-                          )}
-                        </Group>
-                        {event.errorMessage && (
-                          <Text size="sm" c="dimmed">
-                            {event.errorMessage}
-                          </Text>
-                        )}
-                        <ReadableTime value={event.receivedAt} />
-                      </Stack>
+        {cap.error && (
+          <ErrorNotice
+            error={cap.error}
+            onRetry={() => void cap.refetch()}
+            retryLabel="Retry loading sync permissions"
+          />
+        )}
+        <Paper withBorder p="md" className={classes.workspace}>
+          <Tabs
+            value={search.tab || "events"}
+            onChange={(value) =>
+              filters({ tab: value === "rules" ? "rules" : "events" })
+            }
+          >
+            <Tabs.List>
+              <Tabs.Tab value="events">Events</Tabs.Tab>
+              <Tabs.Tab value="rules">Local rules</Tabs.Tab>
+            </Tabs.List>
+            <Tabs.Panel value="events" pt="md">
+              <Stack gap="md">
+                <div className={classes.filters}>
+                  <TextInput
+                    label="Search events"
+                    placeholder="Title, source ID or MAL ID"
+                    leftSection={<FaSearch size={13} />}
+                    value={search.q || ""}
+                    onChange={(e) => filters({ q: e.currentTarget.value })}
+                  />
+                  <Select
+                    label="MAL outcome"
+                    clearable
+                    placeholder="All outcomes"
+                    data={Object.entries(statusLabels).map(
+                      ([value, label]) => ({ value, label }),
+                    )}
+                    value={search.status || null}
+                    onChange={(v) => filters({ status: v || "" })}
+                  />
+                  <Select
+                    label="Source provider"
+                    clearable
+                    placeholder="All providers"
+                    data={["anidb", "tvdb", "tmdb", "myanimelist"].map((v) => ({
+                      value: v,
+                      label: v.toUpperCase(),
+                    }))}
+                    value={search.source || null}
+                    onChange={(v) => filters({ source: v || "" })}
+                  />
+                </div>
+                <Group justify="space-between" gap="xs">
+                  <Group gap="xs" className={classes.touchUtilities}>
+                    <Button
+                      size="compact-xs"
+                      variant={
+                        search.status === "needs_mapping" ? "filled" : "outline"
+                      }
+                      aria-pressed={search.status === "needs_mapping"}
+                      onClick={() =>
+                        filters({
+                          status:
+                            search.status === "needs_mapping"
+                              ? ""
+                              : "needs_mapping",
+                        })
+                      }
+                    >
+                      Needs mapping
+                    </Button>
+                    {filtered && (
                       <Button
-                        renderRoot={(props) => (
-                          <Link
-                            {...props}
-                            to="/sync/events/$eventId"
-                            params={{ eventId: String(event.id) }}
-                            search={search}
-                          />
-                        )}
+                        size="compact-xs"
+                        variant="subtle"
+                        onClick={clearFilters}
                       >
-                        Inspect
+                        Clear filters
                       </Button>
-                    </Group>
-                  </Paper>
-                ))
-              ) : (
-                <Alert title="No events match these filters">
-                  Clear the filters to see all received events. New Plex events
-                  will appear here.
-                </Alert>
-              )}
-              <Pagination
-                total={Math.max(1, Math.ceil((events.data?.count || 0) / 25))}
-                value={search.page || 1}
-                onChange={(page) =>
-                  void navigate({ search: (prev) => ({ ...prev, page }) })
-                }
-                aria-label="Event pages"
-              />
-            </Stack>
-          </Tabs.Panel>
-          <Tabs.Panel value="rules" pt="md">
-            <LocalRules csrf={cap.data?.csrfToken} />
-          </Tabs.Panel>
-        </Tabs>
+                    )}
+                  </Group>
+                  <Text size="xs" className={classes.meta} role="status">
+                    {events.isPending
+                      ? "Loading events…"
+                      : events.error
+                        ? "Events unavailable"
+                        : count
+                          ? `${start}–${Math.min(start + 24, count)} of ${count.toLocaleString()} events`
+                          : "0 events"}
+                  </Text>
+                </Group>
+                {events.isPending ? (
+                  <Stack gap="xs">
+                    {[1, 2, 3, 4].map((v) => (
+                      <Skeleton key={v} height={70} />
+                    ))}
+                  </Stack>
+                ) : events.error ? (
+                  <Stack>
+                    <ErrorNotice error={events.error} />
+                    <Button onClick={() => void events.refetch()}>
+                      Retry loading events
+                    </Button>
+                  </Stack>
+                ) : events.data?.data.length ? (
+                  <EventList events={events.data.data} />
+                ) : (
+                  <Alert
+                    color="gray"
+                    title={
+                      filtered
+                        ? "No events match these filters"
+                        : "No sync events yet"
+                    }
+                  >
+                    <Text size="sm">
+                      {filtered
+                        ? "Try another title, outcome or provider to find an event."
+                        : "New Plex events will appear here. Each event keeps its recorded sync outcome."}
+                    </Text>
+                    {filtered && (
+                      <Button
+                        mt="sm"
+                        size="xs"
+                        className={classes.touchUtility}
+                        onClick={clearFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    )}
+                  </Alert>
+                )}
+                {!!count && (
+                  <Group justify="space-between" gap="sm">
+                    <Text size="xs" className={classes.meta}>
+                      Page {search.page || 1} of{" "}
+                      {Math.max(1, Math.ceil(count / 25))}
+                    </Text>
+                    <Pagination
+                      size="sm"
+                      siblings={0}
+                      total={Math.max(1, Math.ceil(count / 25))}
+                      value={search.page || 1}
+                      onChange={(page) =>
+                        void navigate({ search: (prev) => ({ ...prev, page }) })
+                      }
+                      aria-label="Event pages"
+                    />
+                  </Group>
+                )}
+              </Stack>
+            </Tabs.Panel>
+            <Tabs.Panel value="rules" pt="md">
+              <LocalRules csrf={cap.data?.csrfToken} />
+            </Tabs.Panel>
+          </Tabs>
+        </Paper>
       </Stack>
     </Container>
   );
 }
 function LocalRules({ csrf }: { csrf?: string }) {
   const queryClient = useQueryClient();
+  const navigate = SyncInspectorRoute.useNavigate();
   const [confirm, setConfirm] = useState<string | null>(null);
   const rules = useQuery({ queryKey: syncKeys.rules, queryFn: syncAPI.rules });
   const [editing, setEditing] = useState<LocalRule | null>(null);
@@ -271,34 +291,57 @@ function LocalRules({ csrf }: { csrf?: string }) {
   });
   return (
     <Stack>
-      <Text size="sm" c="dimmed">
-        Personal rules layer over your selected community or custom-file
-        mappings. Create a rule from an event correction. Existing events are
-        never retried automatically.
-      </Text>
-      <Button
-        size="xs"
-        loading={rules.isFetching}
-        onClick={() => void rules.refetch()}
-      >
-        Reload rules
-      </Button>
+      <Group justify="space-between" align="start">
+        <div>
+          <Group gap="xs">
+            <Text fw={600}>Personal mapping rules</Text>
+            {rules.data && (
+              <Badge color="gray" variant="light">
+                {rules.data.data.length}
+              </Badge>
+            )}
+          </Group>
+          <Text size="sm" mt={4}>
+            Override matching for future events in a specific Plex library.
+            Existing events are never retried automatically.
+          </Text>
+        </div>
+        <Button
+          size="compact-xs"
+          variant="subtle"
+          loading={rules.isFetching}
+          onClick={() => void rules.refetch()}
+        >
+          Reload rules
+        </Button>
+      </Group>
       {rules.isPending && <Skeleton height={100} />}{" "}
       {rules.error && <ErrorNotice error={rules.error} />}{" "}
       {disable.error && <ErrorNotice error={disable.error} />}{" "}
       {update.error && <ErrorNotice error={update.error} />}{" "}
       {rules.data?.data.length === 0 && (
         <Alert title="No local rules yet">
-          Inspect an event and choose a MAL entry to save a scoped rule.
+          <Text size="sm">
+            Inspect an event and choose a MAL entry to save a scoped rule.
+          </Text>
+          <Button
+            mt="sm"
+            size="xs"
+            onClick={() =>
+              void navigate({ search: (prev) => ({ ...prev, tab: "events" }) })
+            }
+          >
+            Browse events
+          </Button>
         </Alert>
       )}
       {rules.data?.data.map((rule) => (
         <Paper key={rule.id} withBorder p="md">
           <Stack gap="sm">
             <Group justify="space-between">
-              <Text fw={600}>
-                {rule.source.toUpperCase()} {rule.sourceId} · season{" "}
-                {rule.season}
+              <Text fw={600} size="sm">
+                {rule.source.toUpperCase()} {rule.sourceId} · S{rule.season} →
+                MAL {rule.malId}
               </Text>
               <Group>
                 <Outcome status={rule.active ? "enabled" : "disabled"} />
@@ -322,24 +365,19 @@ function LocalRules({ csrf }: { csrf?: string }) {
                   : " · Server scope not selected"}
             </Text>
             <ReadableTime value={rule.createdAt} />
-            <Group>
+            <Group gap="sm" className={classes.actions}>
               <Button
-                renderRoot={(props) => (
-                  <Link
-                    {...props}
-                    to="/sync/events/$eventId"
-                    params={{ eventId: String(rule.eventId) }}
-                  />
-                )}
+                size="xs"
+                disabled={!csrf || !!editing}
+                onClick={() => setEditing({ ...rule })}
               >
-                Inspect source event
-              </Button>
-              <Button disabled={!csrf} onClick={() => setEditing({ ...rule })}>
                 Edit rule
               </Button>
               {!rule.active && (
                 <Button
-                  disabled={!csrf}
+                  disabled={!csrf || !!editing}
+                  size="xs"
+                  variant="subtle"
                   loading={update.isPending}
                   onClick={() => setEditing({ ...rule, active: true })}
                 >
@@ -349,16 +387,31 @@ function LocalRules({ csrf }: { csrf?: string }) {
               {rule.active && (
                 <Button
                   color="red"
-                  disabled={!csrf}
+                  variant="subtle"
+                  size="xs"
+                  disabled={!csrf || !!editing}
                   onClick={() => setConfirm(rule.id)}
                 >
                   Disable rule
                 </Button>
               )}
+              <Anchor
+                size="sm"
+                renderRoot={(props) => (
+                  <Link
+                    {...props}
+                    to="/sync/events/$eventId"
+                    params={{ eventId: String(rule.eventId) }}
+                  />
+                )}
+              >
+                Inspect source event
+              </Anchor>
             </Group>
             {editing?.id === rule.id && (
               <RuleEditor
                 draft={editing}
+                reactivating={!rule.active && editing.active}
                 onChange={setEditing}
                 csrf={csrf}
                 pending={update.isPending}
@@ -406,8 +459,10 @@ function RuleEditor({
   pending,
   onSave,
   onCancel,
+  reactivating,
 }: {
   draft: LocalRule;
+  reactivating: boolean;
   onChange: (rule: LocalRule) => void;
   csrf?: string;
   pending: boolean;
@@ -456,8 +511,13 @@ function RuleEditor({
     />
   );
   return (
-    <Paper withBorder p="md">
+    <Paper withBorder p="md" className={classes.editor}>
       <Stack>
+        <RuleDraftGuard
+          dirty={reactivating || JSON.stringify(draft) !== initialDraft}
+          onDiscard={onCancel}
+        />
+        <Text className={classes.stepLabel}>1 · Edit scope and conversion</Text>
         <Text fw={600}>Edit revision {draft.revision}</Text>
         <RuleServerScope
           serverId={draft.serverId}
@@ -518,7 +578,7 @@ function RuleEditor({
             ))}
           </Alert>
         )}
-        <Group>
+        <Group className={classes.actions}>
           <Button
             disabled={
               !valid ||
@@ -546,7 +606,9 @@ function RuleEditor({
         </Group>
         {confirmDiscard && (
           <Alert color="yellow" title="Discard these unsaved rule edits?">
-            <Text size="sm">The saved rule will keep its current revision.</Text>
+            <Text size="sm">
+              The saved rule will keep its current revision.
+            </Text>
             <Group mt="sm">
               <Button color="red" disabled={pending} onClick={onCancel}>
                 Discard rule edits

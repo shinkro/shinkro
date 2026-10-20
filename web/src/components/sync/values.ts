@@ -21,5 +21,7 @@ export function displayValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "object")
     return Object.values(value).map(displayValue).join(" · ");
-  return String(value).replaceAll("_", " ");
+  return String(value)
+    .replaceAll("_", " ")
+    .replace(/^./, (char) => char.toUpperCase());
 }
