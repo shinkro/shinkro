@@ -108,11 +108,21 @@ This is a source review, not deployed acceptance or a statement that all tests p
 - Current Plex user/library eligibility is now rechecked during preview, admission and execution, including before a possible send. A known captured server must match the configured server when API verification is enabled. Disabled API/HAMA use remains supported with an explicit warning that server identity was not compared.
 - New inspector input/error/provenance structures are allowlisted and legacy error text is sanitized. No raw credentials were found in this source review. Deployment identity text must stay generic and must not reveal private account or infrastructure details.
 
-### Outstanding verification
+### Local browser QA — 2026-10-20
 
-No additional implementation blocker was found in the final focused source review. This does not close the release gates below:
+Chrome access is now working. An authenticated walkthrough used the isolated copied database, with MAL writes and token refresh disabled, and the backend rebuilt from the feature revision.
 
-- The integration lead reports that full Go tagged integration, race, vet and diff checks passed, alongside frontend build/lint and targeted legacy/list tests. Retain the final revision's evidence and confirm the draft PR CI result; automated checks do not substitute for browser acceptance.
-- Execute the new browser fixtures and review the actual deployed list/detail/correction/rule flow, including narrow-screen, stale-preview and disabled-write states. Browser automation access was denied by the browser control tool during this review; connection to the browser extension is not evidence that site access or a live walkthrough succeeded.
-- The copied-database API smoke confirms the recovered season-one match and server-side disabled-write response. It is API evidence only; it does not substitute for visual/interaction checks or prove a real-account apply. Mutating behavior must remain covered by fake-provider tests without using the copied production account.
-- Verify the final development image, migration, isolation controls and compatible rollback in the private deployment report. Keep hostname, account and infrastructure details out of the public draft PR.
+- Beerus search by AniDB ID found exactly its two failed events. Detail preserved the original season/episode and missing-catalogue result, separately from the new canonical AniDB evaluation resolving S1E2 to MAL 63367 E2.
+- Catalogue refresh invalidated the previous approval. Numeric MAL lookup, explicit selection and an event-only correction produced a separately labelled preview; Apply remained disabled with its reason visible.
+- Legacy local-rule creation required explicit server scope and impact review. The actual impact identified the two matching stored events. Save, revision edit, disable and reviewed re-enable worked; the temporary QA rule was disabled afterward.
+- QA found that the saved-rule editor discarded changes immediately. The editor now asks for confirmation, offers Keep editing, and preserves the saved revision when edits are discarded. Desktop and mobile browser coverage verifies both choices and the subsequent revision lifecycle.
+- List pagination, filter preservation on return, provider filtering, empty-search recovery, keyboard activation, and Inspect links from both history screens were exercised. An existing successful event retained its historical success and returned No change needed from its current preview.
+- At 390px, the actual list, detail, correction and rule editor stayed within the viewport. Screenshots and private database comparisons are retained outside Git. Original Plex and anime-update history stayed unchanged; no new sync jobs or attempts were created.
+
+Validation passed: all 24 desktop/mobile browser fixtures, frontend production build and lint, full Go tagged integration, race checks for the affected backend packages, and Go vet. The browser fixtures cover explicit fake-provider apply, stale/expired previews, conflict and session errors, observed-versus-planned results, and disabled writes. PR CI for the initial feature revision passed, including browser journeys, integration, unit tests and image build; subsequent changes require their own CI result.
+
+### Remaining release verification
+
+- Complete the development deployment and review the final image through its deployed UI. Record the image revision/digest, migration, isolation controls, production health and compatible rollback in the private deployment report.
+- This local walkthrough did not write to a real MAL account. Apply/replay behavior is exercised with fake-provider tests; the read-only copied-account walkthrough must not be represented as real-account write acceptance.
+- Local QA does not claim full manual accessibility certification or a live subfolder deployment review. Keep personal deployment details, screenshots and credentials out of the public PR.

@@ -414,6 +414,8 @@ function RuleEditor({
   onSave: (fingerprint: string) => void;
   onCancel: () => void;
 }) {
+  const [initialDraft] = useState(() => JSON.stringify(draft));
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [reviewed, setReviewed] = useState("");
   const impact = useMutation({
     mutationFn: async (body: LocalRule) => {
@@ -531,8 +533,30 @@ function RuleEditor({
           >
             Save rule revision
           </Button>
-          <Button onClick={onCancel}>Discard edits</Button>
+          <Button
+            disabled={pending}
+            onClick={() =>
+              JSON.stringify(draft) !== initialDraft
+                ? setConfirmDiscard(true)
+                : onCancel()
+            }
+          >
+            Discard edits
+          </Button>
         </Group>
+        {confirmDiscard && (
+          <Alert color="yellow" title="Discard these unsaved rule edits?">
+            <Text size="sm">The saved rule will keep its current revision.</Text>
+            <Group mt="sm">
+              <Button color="red" disabled={pending} onClick={onCancel}>
+                Discard rule edits
+              </Button>
+              <Button onClick={() => setConfirmDiscard(false)}>
+                Keep editing
+              </Button>
+            </Group>
+          </Alert>
+        )}
       </Stack>
     </Paper>
   );

@@ -546,6 +546,24 @@ test("rule lifecycle requires reviewed scope and current revision", async ({
   });
   await page.goto("/sync?tab=rules");
   await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+  await page.getByLabel("Source episode end").fill("11");
+  await page.getByRole("button", { name: "Discard edits", exact: true }).click();
+  await expect(
+    page.getByText("Discard these unsaved rule edits?", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Source episode end")).toHaveValue("11");
+  await page.getByRole("button", { name: "Keep editing", exact: true }).click();
+  await expect(page.getByLabel("Source episode end")).toHaveValue("11");
+  expect(edits).toBe(0);
+  await page.getByRole("button", { name: "Discard edits", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Discard rule edits", exact: true })
+    .click();
+  await expect(page.getByLabel("Source episode end")).toHaveCount(0);
+  await expect(page.getByText("Revision 3", { exact: true })).toBeVisible();
+  expect(edits).toBe(0);
+  await page.getByRole("button", { name: "Edit rule", exact: true }).click();
+  await expect(page.getByLabel("Source episode end")).toHaveValue("12");
   await page.getByLabel("Source episode end").fill("10");
   await expect(
     page.getByRole("button", { name: "Save rule revision" }),
